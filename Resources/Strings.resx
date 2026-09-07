@@ -480,4 +480,10 @@
   <data name="SelectMonth" xml:space="preserve">
     <value>Month</value>
   </data>
+  <data name="YearUnit" xml:space="preserve">
+    <value>yr</value>
+  </data>
+  <data name="MonthUnit" xml:space="preserve">
+    <value>mo</value>
+  </data>
 </root>

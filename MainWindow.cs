@@ -176,6 +176,7 @@ public sealed class MainWindow : Window
             MinWidth = 60, Margin = new Thickness(0, 0, 6, 0), VerticalContentAlignment = VerticalAlignment.Center,
             FontSize = 14, ToolTip = L.T(key)
         };
+        picker.SetResourceReference(StyleProperty, "MonthPickerStyle");
         AutomationProperties.SetName(picker, L.T(key));
         picker.DropDownOpened += (_, _) => Dispatcher.BeginInvoke(() => PickerContains(new Point()), DispatcherPriority.Loaded);
         picker.DropDownClosed += (_, _) => Dispatcher.BeginInvoke(() =>
@@ -209,28 +210,40 @@ public sealed class MainWindow : Window
         bool focusYear = yearPicker.IsKeyboardFocusWithin, focusMonth = monthPicker.IsKeyboardFocusWithin;
         var layout = new DockPanel { Margin = new Thickness(20, 16, 20, 12), LastChildFill = true };
         var top = new StackPanel(); DockPanel.SetDock(top, Dock.Top); layout.Children.Add(top);
-        var title = new DockPanel { Margin = new Thickness(0, 0, 0, 12), LastChildFill = false };
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal };
+        // 左右列等宽，让翻月按钮保持在头部中央。
+        var nav = new Grid { Margin = new Thickness(0, 0, 0, 12) };
+        nav.ColumnDefinitions.Add(new ColumnDefinition());
+        nav.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        nav.ColumnDefinitions.Add(new ColumnDefinition());
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
         buttons.Children.Add(Ui.Button("⚙", "Settings", OpenSettings));
         buttons.Children.Add(Ui.Button("×", "Close", Hide));
-        DockPanel.SetDock(buttons, Dock.Right); title.Children.Add(buttons);
-        top.Children.Add(title);
-        top.Children.Add(Ui.Text(L.T("LocalTime"), 12));
-        var nav = new DockPanel { Margin = new Thickness(0, 16, 0, 12) };
+        Grid.SetColumn(buttons, 2); nav.Children.Add(buttons);
         var navButtons = new StackPanel { Orientation = Orientation.Horizontal };
         navButtons.Children.Add(Ui.Button("‹", "Previous", () => MoveMonth(-1)));
         navButtons.Children.Add(Ui.Button(L.T("Today"), "Today", async () => { selected = DateTime.Today; month = new(selected.Year, selected.Month, 1); Render(); await RefreshData(false); }));
         navButtons.Children.Add(Ui.Button("›", "Next", () => MoveMonth(1)));
-        DockPanel.SetDock(navButtons, Dock.Right); nav.Children.Add(navButtons);
-        var selectors = new Grid();
-        selectors.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
-        selectors.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+        Grid.SetColumn(navButtons, 1); nav.Children.Add(navButtons);
+        var selectors = new Grid { HorizontalAlignment = HorizontalAlignment.Left };
+        selectors.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(80) });
+        selectors.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(60) });
         yearPicker = MonthSelector("SelectYear", Enumerable.Range(1901, 200).Select(y => (object)y.ToString(CultureInfo.InvariantCulture)).ToArray(), month.Year - 1901);
-        monthPicker = MonthSelector("SelectMonth", Enumerable.Range(1, 12).Select(m => (object)L.Format.DateTimeFormat.GetMonthName(m)).ToArray(), month.Month - 1);
+        monthPicker = MonthSelector("SelectMonth", Enumerable.Range(1, 12).Select(m => (object)m.ToString(L.Format)).ToArray(), month.Month - 1);
         // 先设置默认选项，再绑定事件，防止构造控件时触发加载。
         yearPicker.SelectionChanged += (_, _) => { if (yearPicker.SelectedIndex >= 0) ChangeMonth(new DateTime(yearPicker.SelectedIndex + 1901, month.Month, 1)); };
         monthPicker.SelectionChanged += (_, _) => { if (monthPicker.SelectedIndex >= 0) ChangeMonth(new DateTime(month.Year, monthPicker.SelectedIndex + 1, 1)); };
-        selectors.Children.Add(yearPicker); Grid.SetColumn(monthPicker, 1); selectors.Children.Add(monthPicker);
+        // 单位放在控件外；英文使用短单位，完整名称仍由无障碍标签提供。
+        StackPanel WithUnit(ComboBox picker, string key, double width)
+        {
+            picker.MinWidth = 0; picker.Width = width; picker.Margin = new Thickness(0, 0, 2, 0);
+            var group = new StackPanel { Orientation = Orientation.Horizontal };
+            var unit = Ui.Text(L.T(key), 12); unit.VerticalAlignment = VerticalAlignment.Center;
+            group.Children.Add(picker); group.Children.Add(unit);
+            return group;
+        }
+        selectors.Children.Add(WithUnit(yearPicker, "YearUnit", 58));
+        var monthGroup = WithUnit(monthPicker, "MonthUnit", 40);
+        Grid.SetColumn(monthGroup, 1); selectors.Children.Add(monthGroup);
         nav.Children.Add(selectors); top.Children.Add(nav);
         var weekdays = new UniformGrid { Columns = 7, Margin = new Thickness(0, 0, 0, 4) };
         int first = settings.FirstDay ?? (int)L.Format.DateTimeFormat.FirstDayOfWeek;
@@ -390,6 +403,13 @@ public static class Ui
         var hover = new Trigger { Property = System.Windows.UIElement.IsMouseOverProperty, Value = true }; hover.Setters.Add(new Setter(UIElement.OpacityProperty, .8)); button.Triggers.Add(hover);
         var focus = new Trigger { Property = System.Windows.UIElement.IsKeyboardFocusedProperty, Value = true }; focus.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.DodgerBlue)); focus.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(2))); button.Triggers.Add(focus);
         w.Resources[typeof(Button)] = button;
+        // 年月控件与按钮共用配色，动态资源同步更新已展开的列表。
+        w.Resources["MonthPickerBackground"] = Brush(dark ? "#2C2C2C" : "#EEF1F5");
+        w.Resources["MonthPickerForeground"] = w.Foreground;
+        w.Resources["MonthPickerPopup"] = w.Background;
+        w.Resources["MonthPickerHover"] = Brush(dark ? "#414141" : "#DCE3EC");
+        if (!w.Resources.Contains("MonthPickerStyle"))
+            w.Resources.MergedDictionaries.Add((ResourceDictionary)Application.LoadComponent(new Uri("/WinCalendar;component/MonthPicker.xaml", UriKind.Relative)));
     }
     public static Window Dialog(Window owner, string key)
     {
