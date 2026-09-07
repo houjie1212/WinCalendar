@@ -222,4 +222,136 @@
   <data name="HolidayConflict" xml:space="preserve">
     <value>訂閱休班資訊衝突，請查看行程詳情。</value>
   </data>
+  <data name="ChineseLunar" xml:space="preserve">
+    <value>中國農曆</value>
+  </data>
+  <data name="LunarLeap" xml:space="preserve">
+    <value>閏</value>
+  </data>
+  <data name="LunarMonth1" xml:space="preserve">
+    <value>正月</value>
+  </data>
+  <data name="LunarMonth2" xml:space="preserve">
+    <value>二月</value>
+  </data>
+  <data name="LunarMonth3" xml:space="preserve">
+    <value>三月</value>
+  </data>
+  <data name="LunarMonth4" xml:space="preserve">
+    <value>四月</value>
+  </data>
+  <data name="LunarMonth5" xml:space="preserve">
+    <value>五月</value>
+  </data>
+  <data name="LunarMonth6" xml:space="preserve">
+    <value>六月</value>
+  </data>
+  <data name="LunarMonth7" xml:space="preserve">
+    <value>七月</value>
+  </data>
+  <data name="LunarMonth8" xml:space="preserve">
+    <value>八月</value>
+  </data>
+  <data name="LunarMonth9" xml:space="preserve">
+    <value>九月</value>
+  </data>
+  <data name="LunarMonth10" xml:space="preserve">
+    <value>十月</value>
+  </data>
+  <data name="LunarMonth11" xml:space="preserve">
+    <value>冬月</value>
+  </data>
+  <data name="LunarMonth12" xml:space="preserve">
+    <value>臘月</value>
+  </data>
+  <data name="LunarDay1" xml:space="preserve">
+    <value>初一</value>
+  </data>
+  <data name="LunarDay2" xml:space="preserve">
+    <value>初二</value>
+  </data>
+  <data name="LunarDay3" xml:space="preserve">
+    <value>初三</value>
+  </data>
+  <data name="LunarDay4" xml:space="preserve">
+    <value>初四</value>
+  </data>
+  <data name="LunarDay5" xml:space="preserve">
+    <value>初五</value>
+  </data>
+  <data name="LunarDay6" xml:space="preserve">
+    <value>初六</value>
+  </data>
+  <data name="LunarDay7" xml:space="preserve">
+    <value>初七</value>
+  </data>
+  <data name="LunarDay8" xml:space="preserve">
+    <value>初八</value>
+  </data>
+  <data name="LunarDay9" xml:space="preserve">
+    <value>初九</value>
+  </data>
+  <data name="LunarDay10" xml:space="preserve">
+    <value>初十</value>
+  </data>
+  <data name="LunarDay11" xml:space="preserve">
+    <value>十一</value>
+  </data>
+  <data name="LunarDay12" xml:space="preserve">
+    <value>十二</value>
+  </data>
+  <data name="LunarDay13" xml:space="preserve">
+    <value>十三</value>
+  </data>
+  <data name="LunarDay14" xml:space="preserve">
+    <value>十四</value>
+  </data>
+  <data name="LunarDay15" xml:space="preserve">
+    <value>十五</value>
+  </data>
+  <data name="LunarDay16" xml:space="preserve">
+    <value>十六</value>
+  </data>
+  <data name="LunarDay17" xml:space="preserve">
+    <value>十七</value>
+  </data>
+  <data name="LunarDay18" xml:space="preserve">
+    <value>十八</value>
+  </data>
+  <data name="LunarDay19" xml:space="preserve">
+    <value>十九</value>
+  </data>
+  <data name="LunarDay20" xml:space="preserve">
+    <value>二十</value>
+  </data>
+  <data name="LunarDay21" xml:space="preserve">
+    <value>廿一</value>
+  </data>
+  <data name="LunarDay22" xml:space="preserve">
+    <value>廿二</value>
+  </data>
+  <data name="LunarDay23" xml:space="preserve">
+    <value>廿三</value>
+  </data>
+  <data name="LunarDay24" xml:space="preserve">
+    <value>廿四</value>
+  </data>
+  <data name="LunarDay25" xml:space="preserve">
+    <value>廿五</value>
+  </data>
+  <data name="LunarDay26" xml:space="preserve">
+    <value>廿六</value>
+  </data>
+  <data name="LunarDay27" xml:space="preserve">
+    <value>廿七</value>
+  </data>
+  <data name="LunarDay28" xml:space="preserve">
+    <value>廿八</value>
+  </data>
+  <data name="LunarDay29" xml:space="preserve">
+    <value>廿九</value>
+  </data>
+  <data name="LunarDay30" xml:space="preserve">
+    <value>三十</value>
+  </data>
 </root>

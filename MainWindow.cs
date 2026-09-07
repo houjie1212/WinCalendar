@@ -170,7 +170,8 @@ public sealed class MainWindow : Window
         {
             DateTime date = begin.AddDays(i); var holiday = subscriptions.HolidayForDay(date);
             var cell = new Grid { Height = 51, Margin = new Thickness(1) };
-            var name = holiday.Names.Select(L.Festival).FirstOrDefault() ?? "";
+            var lunar = settings.ShowChineseLunar ? ChineseLunar.Label(date) : "";
+            var name = holiday.Names.Select(L.Festival).FirstOrDefault() ?? lunar;
             var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 6, 1, 1) };
             var number = Ui.Text(date.Day.ToString(L.Format), 15, date == DateTime.Today); number.HorizontalAlignment = HorizontalAlignment.Center;
             if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) number.Foreground = Brushes.Coral;
@@ -187,6 +188,7 @@ public sealed class MainWindow : Window
             var b = new Button { Content = cell, Padding = new Thickness(0), Margin = new Thickness(1), HorizontalContentAlignment = HorizontalAlignment.Stretch, BorderThickness = new Thickness(date == DateTime.Today ? 1 : 0), BorderBrush = Ui.Brush("#3B82F6"), Opacity = date.Month == month.Month ? 1 : .55 };
             if (date == selected) { b.Background = Ui.Brush("#285AA8"); b.Foreground = Brushes.White; number.Foreground = Brushes.White; }
             var accessible = date.ToString("D", L.Format) + " · " + string.Join(" · ", holiday.Names.Select(L.Festival));
+            if (lunar.Length > 0) accessible += " · " + L.T("ChineseLunar") + " " + lunar;
             if (holiday.Conflict) accessible += " · " + L.T("HolidayConflict");
             else if (holiday.IsOffDay.HasValue) accessible += " · " + L.T(holiday.IsOffDay.Value ? "OffFull" : "WorkFull");
             b.ToolTip = accessible; AutomationProperties.SetName(b, accessible);

@@ -14,10 +14,10 @@ internal static class IntegrationChecks
         Directory.CreateDirectory(folder);
         Store.Root = Path.Combine(Path.GetFullPath(folder), "unused-preview-cache");
         _ = new App();
-        foreach (var language in new[] { "zh-Hans", "zh-Hant", "en", "ja" }) foreach (bool dark in new[] { false, true })
+        foreach (var language in new[] { "zh-Hans", "zh-Hant", "en", "ja" }) foreach (bool dark in new[] { false, true }) foreach (bool lunar in new[] { false, true })
         {
             L.PreviewLanguage(language);
-            var window = new MainWindow(new Settings(), true, true);
+            var window = new MainWindow(new Settings { ShowChineseLunar = lunar }, true, true);
             Ui.Theme(window, dark);
             var content = (System.Windows.UIElement)window.Content;
             window.Content = null;
@@ -28,7 +28,7 @@ internal static class IntegrationChecks
             var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(440, 710, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
             bitmap.Render(root);
             var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder(); encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
-            using var stream = File.Create(Path.Combine(folder, language + (dark ? "-dark" : "-light") + ".png")); encoder.Save(stream);
+            using var stream = File.Create(Path.Combine(folder, language + (dark ? "-dark" : "-light") + (lunar ? "-lunar" : "") + ".png")); encoder.Save(stream);
             window.Cleanup();
         }
         return 0;

@@ -60,6 +60,9 @@ public sealed class SettingsWindow : Window
         var days = new[] { L.T("System") }.Concat(Enumerable.Range(0, 7).Select(i => L.Format.DateTimeFormat.GetDayName((DayOfWeek)i))).ToArray();
         var first = new ComboBox { ItemsSource = days, SelectedIndex = draft.FirstDay.HasValue ? draft.FirstDay.Value + 1 : 0, Margin = new Thickness(0, 4, 0, 12) };
         AutomationProperties.SetName(first, L.T("FirstDay")); first.SelectionChanged += (_, _) => draft.FirstDay = first.SelectedIndex == 0 ? null : first.SelectedIndex - 1; body.Children.Add(first);
+        var lunar = new CheckBox { Content = L.T("ChineseLunar"), IsChecked = draft.ShowChineseLunar, Foreground = Foreground, Margin = new Thickness(0, 5, 0, 12) };
+        AutomationProperties.SetName(lunar, L.T("ChineseLunar"));
+        lunar.Checked += (_, _) => draft.ShowChineseLunar = true; lunar.Unchecked += (_, _) => draft.ShowChineseLunar = false; body.Children.Add(lunar);
         var start = new CheckBox { Content = L.T("Startup"), IsChecked = startup, Foreground = Foreground, Margin = new Thickness(0, 5, 0, 12) };
         start.Checked += (_, _) => startup = true; start.Unchecked += (_, _) => startup = false; body.Children.Add(start);
         body.Children.Add(Ui.Text(L.T("Language"), 12));
@@ -88,6 +91,7 @@ public sealed class SettingsWindow : Window
             catch { Store.Save(live); MessageBox.Show(this, L.T("StartupError"), "WinCalendar"); return false; }
             // 保存后仍保持编辑副本独立，避免“立即刷新”之后再取消却影响运行中的订阅。
             live.Sources = JsonSerializer.Deserialize<Settings>(JsonSerializer.Serialize(draft, Store.Json), Store.Json)!.Sources;
+            live.ShowChineseLunar = draft.ShowChineseLunar;
             live.FirstDay = draft.FirstDay; live.RefreshMinutes = draft.RefreshMinutes;
             return true;
         }

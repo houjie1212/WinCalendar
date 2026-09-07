@@ -31,6 +31,7 @@ public sealed class Settings
     public List<Subscription> Sources { get; set; } = new();
     public int RefreshMinutes { get; set; } = 30;
     public int? FirstDay { get; set; }
+    public bool ShowChineseLunar { get; set; }
 }
 public static class Store
 {
@@ -97,5 +98,25 @@ public static class Download
             return Encoding.UTF8.GetString(memory.ToArray()).TrimStart('\uFEFF');
         }
         throw new InvalidDataException();
+    }
+}
+
+// 仅计算农历日期，不补充传统节日或休班安排。
+public static class ChineseLunar
+{
+    private static readonly ChineseLunisolarCalendar Calendar = new();
+    public static string Label(DateTime date, CultureInfo? language = null)
+    {
+        date = date.Date;
+        if (date < Calendar.MinSupportedDateTime || date > Calendar.MaxSupportedDateTime) return "";
+        var culture = language ?? L.Ui;
+        string Text(string key) => L.Resources.GetString(key, culture) ?? key;
+        int year = Calendar.GetYear(date), month = Calendar.GetMonth(date), day = Calendar.GetDayOfMonth(date);
+        int leap = Calendar.GetLeapMonth(year);
+        bool isLeap = leap > 0 && month == leap;
+        // .NET 把闰月算作独立月份，转换为实际农历月序。
+        if (leap > 0 && month >= leap) month--;
+        if (day == 1) return (isLeap ? Text("LunarLeap") : "") + Text("LunarMonth" + month);
+        return Text("LunarDay" + day);
     }
 }

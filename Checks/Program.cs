@@ -99,6 +99,25 @@ try
     Check(calendar.HolidayForDay(date).Names.Length == 0 && !calendar.ForDay(date).Any(), "删除订阅立即移除内容");
     cfg.Sources[0].Kind = SubscriptionKind.ChinaHolidays; Store.Save(cfg);
     Check(Store.Load().Sources[0].Kind == SubscriptionKind.ChinaHolidays, "订阅类型持久化");
+    // 农历日期独立于订阅配置，显式语言参数避免依赖检查机器语言。
+    var zh = CultureInfo.GetCultureInfo("zh-Hans");
+    Check(!System.Text.Json.JsonSerializer.Deserialize<Settings>("{}")!.ShowChineseLunar, "旧配置农历默认关闭");
+    cfg.ShowChineseLunar = true; Store.Save(cfg);
+    Check(Store.Load().ShowChineseLunar && Store.Load().Sources[0].Kind == SubscriptionKind.ChinaHolidays, "农历设置重载且不改变订阅");
+    var draft = System.Text.Json.JsonSerializer.Deserialize<Settings>(System.Text.Json.JsonSerializer.Serialize(cfg))!;
+    draft.ShowChineseLunar = false;
+    Check(cfg.ShowChineseLunar && Store.Load().ShowChineseLunar, "取消编辑不修改当前农历设置");
+    Check(ChineseLunar.Label(new DateTime(2026, 2, 17), zh) == "正月", "农历新年月初");
+    Check(ChineseLunar.Label(new DateTime(2026, 2, 16), zh) == "廿九", "农历年界");
+    Check(ChineseLunar.Label(new DateTime(2026, 9, 25), zh) == "十五", "仅日期不生成中秋节名称");
+    var lc = new ChineseLunisolarCalendar();
+    var leapMonth = lc.GetLeapMonth(2025);
+    var leapDate = lc.ToDateTime(2025, leapMonth, 1, 0, 0, 0, 0);
+    Check(ChineseLunar.Label(leapDate, zh) == "闰六月", "闰月月序");
+    Check(ChineseLunar.Label(lc.ToDateTime(2025, leapMonth + 1, 1, 0, 0, 0, 0), zh) == "七月", "闰月后月序");
+    Check(ChineseLunar.Label(lc.MinSupportedDateTime.AddDays(-1), zh) == "" && ChineseLunar.Label(lc.MaxSupportedDateTime.AddDays(1), zh) == "", "农历支持范围外安全留空");
+    Check(ChineseLunar.Label(lc.MinSupportedDateTime, zh) != "" && ChineseLunar.Label(lc.MaxSupportedDateTime, zh) != "", "农历支持范围边界");
+    Check(ChineseLunar.Label(leapDate, CultureInfo.GetCultureInfo("zh-Hant")) == "閏六月" && ChineseLunar.Label(leapDate, CultureInfo.GetCultureInfo("en")) == "Leap Month 6" && ChineseLunar.Label(leapDate, CultureInfo.GetCultureInfo("ja")) == "閏6月", "四语言农历月份");
     Console.WriteLine($"{passed} checks passed");
 }
 catch (Exception e) { Console.WriteLine("FAIL " + e.Message); Environment.ExitCode = 1; }
