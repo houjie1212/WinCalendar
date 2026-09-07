@@ -177,16 +177,23 @@ public sealed class MainWindow : Window
             if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) number.Foreground = Brushes.Coral;
             stack.Children.Add(number);
             stack.Children.Add(new TextBlock { Text = name, FontSize = 10, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Stretch, TextAlignment = TextAlignment.Center });
-            var dots = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Height = 5 };
-            foreach (var color in subscriptions.ForDay(date).Select(x => x.Color).Distinct().Take(4)) dots.Children.Add(new System.Windows.Shapes.Ellipse { Fill = Ui.Brush(color), Width = 3, Height = 3, Margin = new Thickness(1) });
-            stack.Children.Add(dots); cell.Children.Add(stack);
+            cell.Children.Add(stack);
             if (holiday.IsOffDay.HasValue)
             {
                 var badge = new Border { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, CornerRadius = new CornerRadius(2), Padding = new Thickness(2, 0, 2, 0), Background = Ui.Brush(holiday.IsOffDay == true ? "#16744A" : "#A94A12"), Child = new TextBlock { Text = L.T(holiday.IsOffDay == true ? "Off" : "Work"), FontSize = 8, Foreground = Brushes.White } };
                 cell.Children.Add(badge);
             }
             var b = new Button { Content = cell, Padding = new Thickness(0), Margin = new Thickness(1), HorizontalContentAlignment = HorizontalAlignment.Stretch, BorderThickness = new Thickness(date == DateTime.Today ? 1 : 0), BorderBrush = Ui.Brush("#3B82F6"), Opacity = date.Month == month.Month ? 1 : .55 };
-            if (date == selected) { b.Background = Ui.Brush("#285AA8"); b.Foreground = Brushes.White; number.Foreground = Brushes.White; }
+            // 多源同日按订阅列表顺序取色；与主题底色混合，保留日期文字对比度。
+            var daySources = subscriptions.ForDay(date).Select(e => e.SourceId).ToHashSet();
+            var source = settings.Sources.FirstOrDefault(s => s.Enabled && daySources.Contains(s.Id));
+            if (source != null)
+            {
+                b.Background = Ui.SubscriptionBackground(source.Color, (SolidColorBrush)Background);
+                number.Foreground = Foreground;
+                if (date == selected) { b.BorderThickness = new Thickness(2); b.BorderBrush = Foreground; }
+            }
+            else if (date == selected) { b.Background = Ui.Brush("#285AA8"); b.Foreground = Brushes.White; number.Foreground = Brushes.White; }
             var accessible = date.ToString("D", L.Format) + " · " + string.Join(" · ", holiday.Names.Select(L.Festival));
             if (lunar.Length > 0) accessible += " · " + L.T("ChineseLunar") + " " + lunar;
             if (holiday.Conflict) accessible += " · " + L.T("HolidayConflict");
@@ -253,6 +260,14 @@ public static class Ui
     {
         try { return (Brush)new BrushConverter().ConvertFromInvariantString(color)!; }
         catch { return Brushes.DodgerBlue; }
+    }
+    // 订阅色占 28%，其余使用系统主题背景，避免深色订阅遮住文字。
+    public static SolidColorBrush SubscriptionBackground(string color, SolidColorBrush background)
+    {
+        var tint = ((SolidColorBrush)Brush(color)).Color;
+        var baseColor = background.Color;
+        byte Blend(byte value, byte basis) => (byte)Math.Round(value * .28 + basis * .72);
+        return new SolidColorBrush(Color.FromRgb(Blend(tint.R, baseColor.R), Blend(tint.G, baseColor.G), Blend(tint.B, baseColor.B)));
     }
     public static TextBlock Text(string text, double size = 14, bool bold = false) => new() { Text = text, FontSize = size, FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 2, 0, 2) };
     public static TextBlock Label(string key) { var t = Text(L.T(key)); t.Tag = new ResourceTag(key, true); return t; }

@@ -118,6 +118,9 @@ try
     Check(ChineseLunar.Label(lc.MinSupportedDateTime.AddDays(-1), zh) == "" && ChineseLunar.Label(lc.MaxSupportedDateTime.AddDays(1), zh) == "", "农历支持范围外安全留空");
     Check(ChineseLunar.Label(lc.MinSupportedDateTime, zh) != "" && ChineseLunar.Label(lc.MaxSupportedDateTime, zh) != "", "农历支持范围边界");
     Check(ChineseLunar.Label(leapDate, CultureInfo.GetCultureInfo("zh-Hant")) == "閏六月" && ChineseLunar.Label(leapDate, CultureInfo.GetCultureInfo("en")) == "Leap Month 6" && ChineseLunar.Label(leapDate, CultureInfo.GetCultureInfo("ja")) == "閏6月", "四语言农历月份");
+    var lightTint = Ui.SubscriptionBackground("#2563EB", new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 249, 251))).Color;
+    var darkTint = Ui.SubscriptionBackground("#2563EB", new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(32, 32, 32))).Color;
+    Check(lightTint.B > lightTint.R && lightTint.R > 180 && darkTint.B > darkTint.R && darkTint.B < 100, "订阅背景保留蓝色且适配深浅主题");
     Console.WriteLine($"{passed} checks passed");
 }
 catch (Exception e) { Console.WriteLine("FAIL " + e.Message); Environment.ExitCode = 1; }
