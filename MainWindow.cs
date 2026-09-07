@@ -140,7 +140,7 @@ public sealed class MainWindow : Window
     {
         var next = month.AddMonths(offset);
         if (next.Year is < 1901 or > 2100) return;
-        month = next; selected = month; Render(); await RefreshData(false);
+        month = next; Render(); await RefreshData(false);
     }
     // 仅月历区域接管滚轮，日程列表继续使用自身滚动行为。
     private void CalendarMouseWheel(object sender, MouseWheelEventArgs e)
