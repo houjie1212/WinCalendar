@@ -21,6 +21,22 @@ try
     }
     Check(new DateTime(2026, 9, 7).ToString("d", CultureInfo.GetCultureInfo("ja-JP")) == "2026/09/07", "日本区域日期格式");
     Check(MainWindow.GridStart(new DateTime(2026, 9, 1), DayOfWeek.Sunday).AddDays(41) == new DateTime(2026, 10, 10), "订阅覆盖完整六周网格");
+    // 覆盖浏览范围内的闰年、跨年及七种周起始日，并验证相邻网格完整包含。
+    bool rangesValid = true;
+    for (int year = 1901; year <= 2100; year++)
+    for (int m = 1; m <= 12; m++)
+    for (int first = 0; first < 7; first++)
+    {
+        var center = new DateTime(year, m, 1);
+        var range = MainWindow.PreloadRange(center, (DayOfWeek)first);
+        rangesValid &= (range.To - range.From).TotalDays <= 112;
+        for (int offset = -1; offset <= 1; offset++)
+        {
+            var start = MainWindow.GridStart(center.AddMonths(offset), (DayOfWeek)first);
+            rangesValid &= range.From <= start && range.To >= start.AddDays(42);
+        }
+    }
+    Check(rangesValid, "相邻月份预加载覆盖全部网格及范围边界");
     Check(System.Text.Json.JsonSerializer.Deserialize<Subscription>("{}")!.Kind == SubscriptionKind.Ordinary, "旧订阅默认普通日历");
     Check(Download.Validate("webcal://example.com/a.ics?secret=test").Scheme == "https", "Webcal 标准化");
     Reject(() => Download.Validate("http://example.com/a.ics"), "拒绝明文 HTTP");
@@ -62,6 +78,19 @@ try
     Check(IcsParser.Parse(folded, from, to, "one", "blue").Single().Title == "中文续行", "ICS 折行文本");
     Reject(() => IcsParser.Parse("not ICS", from, to, "one", "blue"), "非法 ICS");
     Reject(() => IcsParser.Parse(allDay, from, from.AddYears(1), "one", "blue"), "限制展开范围");
+
+    Check(IcsParser.Parse(allDay, from, from.AddDays(112), "one", "blue").Count == 1, "允许112天预加载解析");
+    Reject(() => IcsParser.Parse(allDay, from, from.AddDays(113), "one", "blue"), "拒绝超过112天展开");
+    var preloadIcs = Wrap("BEGIN:VEVENT\nUID:preload\nDTSTART;VALUE=DATE:20260101\nDTEND;VALUE=DATE:20260102\nRRULE:FREQ=DAILY;COUNT=730\nSUMMARY:假日 假期 第1天/共1天\nEND:VEVENT");
+    // 连续前翻、后翻及跨年切换，检查每次加载的首尾、休班和事件去重。
+    foreach (int offset in new[] { 0, 1, 2, 5, 4, 0 })
+    {
+        var range = MainWindow.PreloadRange(from.AddMonths(offset), DayOfWeek.Monday);
+        var loaded = IcsParser.Parse(preloadIcs, range.From, range.To, "one", "blue", SubscriptionKind.ChinaHolidays);
+        Check(loaded.Any(e => e.HolidayOn(range.From)) && loaded.Any(e => e.HolidayOn(range.To.AddDays(-1))) &&
+            loaded.All(e => e.IsOffDay == true) && loaded.Select(e => e.Id).Distinct().Count() == loaded.Count,
+            "连续切换预加载假日边界及去重 " + offset);
+    }
 
     // 用完整 ICS 样本校验类型、源日期与日期格聚合，避免依赖当前系统时区。
     string HolidayIcs(string title, string dates = "DTSTART;VALUE=DATE:20260925\nDTEND;VALUE=DATE:20260928") => Wrap("BEGIN:VEVENT\nUID:holiday\n" + dates + "\nSUMMARY:" + title + "\nDESCRIPTION:假期 补班 不参与识别\nEND:VEVENT");

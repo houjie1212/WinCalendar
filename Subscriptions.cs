@@ -28,7 +28,7 @@ public static class IcsParser
     public static List<AgendaEvent> Parse(string text, DateTime from, DateTime to, string source, string color, SubscriptionKind kind = SubscriptionKind.Ordinary)
     {
         if (text.Length > 5 * 1024 * 1024 || !text.TrimStart().StartsWith("BEGIN:VCALENDAR", StringComparison.OrdinalIgnoreCase) || !text.Contains("END:VCALENDAR", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException();
-        if (to <= from || (to - from).TotalDays > 100) throw new ArgumentOutOfRangeException();
+        if (to <= from || (to - from).TotalDays > 112) throw new ArgumentOutOfRangeException();
         var calendar = Ical.Net.Calendar.Load(text) ?? throw new InvalidDataException();
         if (calendar.Events.Count > 10000) throw new InvalidDataException();
         var events = new List<AgendaEvent>();

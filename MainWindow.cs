@@ -77,6 +77,9 @@ public sealed class MainWindow : Window
     public void Cleanup() { timer.Stop(); clock?.Dispose(); }
     public async void RefreshEnvironment() { L.Reload(); ApplyTheme(); Render(); if (IsVisible) Position(anchor); await RefreshData(false); }
     public static DateTime GridStart(DateTime month, DayOfWeek first) => month.AddDays(-((7 + (int)month.DayOfWeek - (int)first) % 7));
+    // 前后各预加载一个完整月历网格，结束日期为排他边界。
+    public static (DateTime From, DateTime To) PreloadRange(DateTime month, DayOfWeek first) =>
+        (GridStart(month.AddMonths(-1), first), GridStart(month.AddMonths(1), first).AddDays(42));
     private void ApplyTheme()
     {
         bool dark = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme", 1) is int value && value == 0;
@@ -128,12 +131,13 @@ public sealed class MainWindow : Window
         var displayed = month;
         try
         {
-            var begin = GridStart(displayed, (DayOfWeek)(settings.FirstDay ?? (int)L.Format.DateTimeFormat.FirstDayOfWeek));
-            await subscriptions.Refresh(begin, begin.AddDays(42), network);
+            var range = PreloadRange(displayed, (DayOfWeek)(settings.FirstDay ?? (int)L.Format.DateTimeFormat.FirstDayOfWeek));
+            await subscriptions.Refresh(range.From, range.To, network);
             dataError = false;
         }
         catch { dataError = true; }
         finally { busy = false; Render(); }
+        // 加载期间的多次翻月合并为最新月份；原有日程在后台加载完成前继续显示。
         if (displayed != month) await RefreshData(false);
     }
     private async void MoveMonth(int offset)
