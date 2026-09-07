@@ -354,4 +354,7 @@
   <data name="LunarDay30" xml:space="preserve">
     <value>三十</value>
   </data>
+  <data name="VersionFormat" xml:space="preserve">
+    <value>版本 {0}</value>
+  </data>
 </root>

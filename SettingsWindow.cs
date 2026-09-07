@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
@@ -66,6 +67,11 @@ public sealed class SettingsWindow : Window
         var start = new CheckBox { Content = L.T("Startup"), IsChecked = startup, Foreground = Foreground, Margin = new Thickness(0, 5, 0, 12) };
         start.Checked += (_, _) => startup = true; start.Unchecked += (_, _) => startup = false; body.Children.Add(start);
         body.Children.Add(Ui.Text(L.T("Language"), 12));
+        // 从当前程序元数据读取工程版本，不显示构建提交哈希。
+        var version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
+            ?? typeof(App).Assembly.GetName().Version?.ToString() ?? "";
+        var versionLabel = Ui.Text(string.Format(L.T("VersionFormat"), version), 12);
+        AutomationProperties.SetName(versionLabel, versionLabel.Text); body.Children.Add(versionLabel);
         var footer = new WrapPanel { Margin = new Thickness(0, 20, 0, 0) };
         footer.Children.Add(Ui.Button(L.T("Save"), "Save", Save));
         footer.Children.Add(Ui.Button(L.T("Refresh"), "Refresh", async () => { if (Apply()) { IsEnabled = false; try { await refreshData(); Render(); } finally { IsEnabled = true; } } }));
