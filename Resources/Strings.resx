@@ -1,0 +1,351 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Preview" xml:space="preserve">
+    <value>Layout preview</value>
+  </data>
+  <data name="Today" xml:space="preserve">
+    <value>Today</value>
+  </data>
+  <data name="Previous" xml:space="preserve">
+    <value>Previous month</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>Next month</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Exit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Add" xml:space="preserve">
+    <value>Add subscription</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="ConfirmDelete" xml:space="preserve">
+    <value>Remove this subscription?</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Url" xml:space="preserve">
+    <value>Subscription URL (HTTPS / Webcal)</value>
+  </data>
+  <data name="Color" xml:space="preserve">
+    <value>Color</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Subscriptions" xml:space="preserve">
+    <value>Calendar subscriptions</value>
+  </data>
+  <data name="NoSubscriptions" xml:space="preserve">
+    <value>Add an ICS link in Settings.</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh now</value>
+  </data>
+  <data name="RefreshMinutes" xml:space="preserve">
+    <value>Refresh interval (minutes)</value>
+  </data>
+  <data name="FirstDay" xml:space="preserve">
+    <value>First day of week</value>
+  </data>
+  <data name="System" xml:space="preserve">
+    <value>Follow system</value>
+  </data>
+  <data name="Startup" xml:space="preserve">
+    <value>Start with Windows</value>
+  </data>
+  <data name="StartupError" xml:space="preserve">
+    <value>Could not update startup setting.</value>
+  </data>
+  <data name="AllDay" xml:space="preserve">
+    <value>All day</value>
+  </data>
+  <data name="NoEvents" xml:space="preserve">
+    <value>No events for this day</value>
+  </data>
+  <data name="Details" xml:space="preserve">
+    <value>Event details</value>
+  </data>
+  <data name="Off" xml:space="preserve">
+    <value>Off</value>
+  </data>
+  <data name="Work" xml:space="preserve">
+    <value>Work</value>
+  </data>
+  <data name="OffFull" xml:space="preserve">
+    <value>Official holiday</value>
+  </data>
+  <data name="WorkFull" xml:space="preserve">
+    <value>Make-up working day</value>
+  </data>
+  <data name="UnknownYear" xml:space="preserve">
+    <value>Holiday schedule not available for this year.</value>
+  </data>
+  <data name="HolidayFailed" xml:space="preserve">
+    <value>Holiday update unavailable; using saved data.</value>
+  </data>
+  <data name="Refreshing" xml:space="preserve">
+    <value>Refreshing…</value>
+  </data>
+  <data name="RefreshFailed" xml:space="preserve">
+    <value>Update failed; saved events retained.</value>
+  </data>
+  <data name="LastSuccess" xml:space="preserve">
+    <value>Last updated</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>Not updated yet</value>
+  </data>
+  <data name="InvalidUrl" xml:space="preserve">
+    <value>Enter a valid HTTPS or Webcal URL.</value>
+  </data>
+  <data name="InvalidName" xml:space="preserve">
+    <value>Enter a subscription name.</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>Could not save. Existing data is unchanged.</value>
+  </data>
+  <data name="Fatal" xml:space="preserve">
+    <value>WinCalendar could not start. Check the local settings or report the error type below.</value>
+  </data>
+  <data name="AlreadyRunning" xml:space="preserve">
+    <value>WinCalendar is already running.</value>
+  </data>
+  <data name="ClockReady" xml:space="preserve">
+    <value>System clock connected</value>
+  </data>
+  <data name="ClockMissing" xml:space="preserve">
+    <value>System clock not detected. Integration is not ready.</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Language follows Windows; formats follow regional settings.</value>
+  </data>
+  <data name="ChinaCalendar" xml:space="preserve">
+    <value>China holidays · local time</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>Links stay on this computer. Subscription text is shown unchanged.</value>
+  </data>
+  <data name="NewYear" xml:space="preserve">
+    <value>New Year's Day</value>
+  </data>
+  <data name="SpringFestival" xml:space="preserve">
+    <value>Spring Festival</value>
+  </data>
+  <data name="Qingming" xml:space="preserve">
+    <value>Qingming Festival</value>
+  </data>
+  <data name="LabourDay" xml:space="preserve">
+    <value>Labour Day</value>
+  </data>
+  <data name="DragonBoat" xml:space="preserve">
+    <value>Dragon Boat Festival</value>
+  </data>
+  <data name="MidAutumn" xml:space="preserve">
+    <value>Mid-Autumn Festival</value>
+  </data>
+  <data name="NationalDay" xml:space="preserve">
+    <value>National Day</value>
+  </data>
+  <data name="Lantern" xml:space="preserve">
+    <value>Lantern Festival</value>
+  </data>
+  <data name="Qixi" xml:space="preserve">
+    <value>Qixi Festival</value>
+  </data>
+  <data name="Ghost" xml:space="preserve">
+    <value>Ghost Festival</value>
+  </data>
+  <data name="DoubleNinth" xml:space="preserve">
+    <value>Double Ninth Festival</value>
+  </data>
+  <data name="Laba" xml:space="preserve">
+    <value>Laba Festival</value>
+  </data>
+  <data name="NewYearsEve" xml:space="preserve">
+    <value>Lunar New Year's Eve</value>
+  </data>
+  <data name="Leap" xml:space="preserve">
+    <value>Leap</value>
+  </data>
+  <data name="LunarFormat" xml:space="preserve">
+    <value>Lunar {0}/{1}</value>
+  </data>
+  <data name="Blue" xml:space="preserve">
+    <value>Blue</value>
+  </data>
+  <data name="Green" xml:space="preserve">
+    <value>Green</value>
+  </data>
+  <data name="Orange" xml:space="preserve">
+    <value>Orange</value>
+  </data>
+  <data name="Purple" xml:space="preserve">
+    <value>Purple</value>
+  </data>
+  <data name="Pink" xml:space="preserve">
+    <value>Pink</value>
+  </data>
+  <data name="Red" xml:space="preserve">
+    <value>Red</value>
+  </data>
+  <data name="LunarMonth1" xml:space="preserve">
+    <value>1</value>
+  </data>
+  <data name="LunarMonth2" xml:space="preserve">
+    <value>2</value>
+  </data>
+  <data name="LunarMonth3" xml:space="preserve">
+    <value>3</value>
+  </data>
+  <data name="LunarMonth4" xml:space="preserve">
+    <value>4</value>
+  </data>
+  <data name="LunarMonth5" xml:space="preserve">
+    <value>5</value>
+  </data>
+  <data name="LunarMonth6" xml:space="preserve">
+    <value>6</value>
+  </data>
+  <data name="LunarMonth7" xml:space="preserve">
+    <value>7</value>
+  </data>
+  <data name="LunarMonth8" xml:space="preserve">
+    <value>8</value>
+  </data>
+  <data name="LunarMonth9" xml:space="preserve">
+    <value>9</value>
+  </data>
+  <data name="LunarMonth10" xml:space="preserve">
+    <value>10</value>
+  </data>
+  <data name="LunarMonth11" xml:space="preserve">
+    <value>11</value>
+  </data>
+  <data name="LunarMonth12" xml:space="preserve">
+    <value>12</value>
+  </data>
+  <data name="LunarDay1" xml:space="preserve">
+    <value>1</value>
+  </data>
+  <data name="LunarDay2" xml:space="preserve">
+    <value>2</value>
+  </data>
+  <data name="LunarDay3" xml:space="preserve">
+    <value>3</value>
+  </data>
+  <data name="LunarDay4" xml:space="preserve">
+    <value>4</value>
+  </data>
+  <data name="LunarDay5" xml:space="preserve">
+    <value>5</value>
+  </data>
+  <data name="LunarDay6" xml:space="preserve">
+    <value>6</value>
+  </data>
+  <data name="LunarDay7" xml:space="preserve">
+    <value>7</value>
+  </data>
+  <data name="LunarDay8" xml:space="preserve">
+    <value>8</value>
+  </data>
+  <data name="LunarDay9" xml:space="preserve">
+    <value>9</value>
+  </data>
+  <data name="LunarDay10" xml:space="preserve">
+    <value>10</value>
+  </data>
+  <data name="LunarDay11" xml:space="preserve">
+    <value>11</value>
+  </data>
+  <data name="LunarDay12" xml:space="preserve">
+    <value>12</value>
+  </data>
+  <data name="LunarDay13" xml:space="preserve">
+    <value>13</value>
+  </data>
+  <data name="LunarDay14" xml:space="preserve">
+    <value>14</value>
+  </data>
+  <data name="LunarDay15" xml:space="preserve">
+    <value>15</value>
+  </data>
+  <data name="LunarDay16" xml:space="preserve">
+    <value>16</value>
+  </data>
+  <data name="LunarDay17" xml:space="preserve">
+    <value>17</value>
+  </data>
+  <data name="LunarDay18" xml:space="preserve">
+    <value>18</value>
+  </data>
+  <data name="LunarDay19" xml:space="preserve">
+    <value>19</value>
+  </data>
+  <data name="LunarDay20" xml:space="preserve">
+    <value>20</value>
+  </data>
+  <data name="LunarDay21" xml:space="preserve">
+    <value>21</value>
+  </data>
+  <data name="LunarDay22" xml:space="preserve">
+    <value>22</value>
+  </data>
+  <data name="LunarDay23" xml:space="preserve">
+    <value>23</value>
+  </data>
+  <data name="LunarDay24" xml:space="preserve">
+    <value>24</value>
+  </data>
+  <data name="LunarDay25" xml:space="preserve">
+    <value>25</value>
+  </data>
+  <data name="LunarDay26" xml:space="preserve">
+    <value>26</value>
+  </data>
+  <data name="LunarDay27" xml:space="preserve">
+    <value>27</value>
+  </data>
+  <data name="LunarDay28" xml:space="preserve">
+    <value>28</value>
+  </data>
+  <data name="LunarDay29" xml:space="preserve">
+    <value>29</value>
+  </data>
+  <data name="LunarDay30" xml:space="preserve">
+    <value>30</value>
+  </data>
+</root>

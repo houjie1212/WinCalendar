@@ -1,0 +1,351 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Preview" xml:space="preserve">
+    <value>布局预览</value>
+  </data>
+  <data name="Today" xml:space="preserve">
+    <value>今天</value>
+  </data>
+  <data name="Previous" xml:space="preserve">
+    <value>上个月</value>
+  </data>
+  <data name="Next" xml:space="preserve">
+    <value>下个月</value>
+  </data>
+  <data name="Settings" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="Exit" xml:space="preserve">
+    <value>退出</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Back" xml:space="preserve">
+    <value>返回</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Add" xml:space="preserve">
+    <value>添加订阅</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>编辑</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="ConfirmDelete" xml:space="preserve">
+    <value>删除此订阅？</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="Url" xml:space="preserve">
+    <value>订阅地址（HTTPS / Webcal）</value>
+  </data>
+  <data name="Color" xml:space="preserve">
+    <value>颜色</value>
+  </data>
+  <data name="Enabled" xml:space="preserve">
+    <value>启用</value>
+  </data>
+  <data name="Subscriptions" xml:space="preserve">
+    <value>日历订阅</value>
+  </data>
+  <data name="NoSubscriptions" xml:space="preserve">
+    <value>在设置中添加 ICS 订阅链接。</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>立即刷新</value>
+  </data>
+  <data name="RefreshMinutes" xml:space="preserve">
+    <value>刷新间隔（分钟）</value>
+  </data>
+  <data name="FirstDay" xml:space="preserve">
+    <value>每周起始日</value>
+  </data>
+  <data name="System" xml:space="preserve">
+    <value>跟随系统</value>
+  </data>
+  <data name="Startup" xml:space="preserve">
+    <value>开机自启动</value>
+  </data>
+  <data name="StartupError" xml:space="preserve">
+    <value>无法更新自启动设置。</value>
+  </data>
+  <data name="AllDay" xml:space="preserve">
+    <value>全天</value>
+  </data>
+  <data name="NoEvents" xml:space="preserve">
+    <value>当天没有日程</value>
+  </data>
+  <data name="Details" xml:space="preserve">
+    <value>日程详情</value>
+  </data>
+  <data name="Off" xml:space="preserve">
+    <value>休</value>
+  </data>
+  <data name="Work" xml:space="preserve">
+    <value>班</value>
+  </data>
+  <data name="OffFull" xml:space="preserve">
+    <value>法定放假日</value>
+  </data>
+  <data name="WorkFull" xml:space="preserve">
+    <value>调休补班日</value>
+  </data>
+  <data name="UnknownYear" xml:space="preserve">
+    <value>该年份的休班安排尚未获取。</value>
+  </data>
+  <data name="HolidayFailed" xml:space="preserve">
+    <value>节假日更新失败，继续使用已有数据。</value>
+  </data>
+  <data name="Refreshing" xml:space="preserve">
+    <value>正在刷新…</value>
+  </data>
+  <data name="RefreshFailed" xml:space="preserve">
+    <value>更新失败，已保留上次日程。</value>
+  </data>
+  <data name="LastSuccess" xml:space="preserve">
+    <value>上次更新</value>
+  </data>
+  <data name="Never" xml:space="preserve">
+    <value>尚未更新</value>
+  </data>
+  <data name="InvalidUrl" xml:space="preserve">
+    <value>请输入有效的 HTTPS 或 Webcal 地址。</value>
+  </data>
+  <data name="InvalidName" xml:space="preserve">
+    <value>请输入订阅名称。</value>
+  </data>
+  <data name="SaveFailed" xml:space="preserve">
+    <value>保存失败，原有数据未更改。</value>
+  </data>
+  <data name="Fatal" xml:space="preserve">
+    <value>WinCalendar 无法启动，请检查本地配置或反馈以下错误类型。</value>
+  </data>
+  <data name="AlreadyRunning" xml:space="preserve">
+    <value>WinCalendar 已在运行。</value>
+  </data>
+  <data name="ClockReady" xml:space="preserve">
+    <value>系统时间入口已连接</value>
+  </data>
+  <data name="ClockMissing" xml:space="preserve">
+    <value>未检测到系统时间入口，接管尚未就绪。</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>显示语言跟随 Windows，日期格式跟随区域设置。</value>
+  </data>
+  <data name="ChinaCalendar" xml:space="preserve">
+    <value>中国节假日 · 本地时间</value>
+  </data>
+  <data name="Privacy" xml:space="preserve">
+    <value>链接保存在本机，订阅内容按原文显示。</value>
+  </data>
+  <data name="NewYear" xml:space="preserve">
+    <value>元旦</value>
+  </data>
+  <data name="SpringFestival" xml:space="preserve">
+    <value>春节</value>
+  </data>
+  <data name="Qingming" xml:space="preserve">
+    <value>清明节</value>
+  </data>
+  <data name="LabourDay" xml:space="preserve">
+    <value>劳动节</value>
+  </data>
+  <data name="DragonBoat" xml:space="preserve">
+    <value>端午节</value>
+  </data>
+  <data name="MidAutumn" xml:space="preserve">
+    <value>中秋节</value>
+  </data>
+  <data name="NationalDay" xml:space="preserve">
+    <value>国庆节</value>
+  </data>
+  <data name="Lantern" xml:space="preserve">
+    <value>元宵节</value>
+  </data>
+  <data name="Qixi" xml:space="preserve">
+    <value>七夕</value>
+  </data>
+  <data name="Ghost" xml:space="preserve">
+    <value>中元节</value>
+  </data>
+  <data name="DoubleNinth" xml:space="preserve">
+    <value>重阳节</value>
+  </data>
+  <data name="Laba" xml:space="preserve">
+    <value>腊八节</value>
+  </data>
+  <data name="NewYearsEve" xml:space="preserve">
+    <value>除夕</value>
+  </data>
+  <data name="Leap" xml:space="preserve">
+    <value>闰</value>
+  </data>
+  <data name="LunarFormat" xml:space="preserve">
+    <value>农历{0}/{1}</value>
+  </data>
+  <data name="Blue" xml:space="preserve">
+    <value>蓝色</value>
+  </data>
+  <data name="Green" xml:space="preserve">
+    <value>绿色</value>
+  </data>
+  <data name="Orange" xml:space="preserve">
+    <value>橙色</value>
+  </data>
+  <data name="Purple" xml:space="preserve">
+    <value>紫色</value>
+  </data>
+  <data name="Pink" xml:space="preserve">
+    <value>粉色</value>
+  </data>
+  <data name="Red" xml:space="preserve">
+    <value>红色</value>
+  </data>
+  <data name="LunarMonth1" xml:space="preserve">
+    <value>正月</value>
+  </data>
+  <data name="LunarMonth2" xml:space="preserve">
+    <value>二月</value>
+  </data>
+  <data name="LunarMonth3" xml:space="preserve">
+    <value>三月</value>
+  </data>
+  <data name="LunarMonth4" xml:space="preserve">
+    <value>四月</value>
+  </data>
+  <data name="LunarMonth5" xml:space="preserve">
+    <value>五月</value>
+  </data>
+  <data name="LunarMonth6" xml:space="preserve">
+    <value>六月</value>
+  </data>
+  <data name="LunarMonth7" xml:space="preserve">
+    <value>七月</value>
+  </data>
+  <data name="LunarMonth8" xml:space="preserve">
+    <value>八月</value>
+  </data>
+  <data name="LunarMonth9" xml:space="preserve">
+    <value>九月</value>
+  </data>
+  <data name="LunarMonth10" xml:space="preserve">
+    <value>十月</value>
+  </data>
+  <data name="LunarMonth11" xml:space="preserve">
+    <value>冬月</value>
+  </data>
+  <data name="LunarMonth12" xml:space="preserve">
+    <value>腊月</value>
+  </data>
+  <data name="LunarDay1" xml:space="preserve">
+    <value>初一</value>
+  </data>
+  <data name="LunarDay2" xml:space="preserve">
+    <value>初二</value>
+  </data>
+  <data name="LunarDay3" xml:space="preserve">
+    <value>初三</value>
+  </data>
+  <data name="LunarDay4" xml:space="preserve">
+    <value>初四</value>
+  </data>
+  <data name="LunarDay5" xml:space="preserve">
+    <value>初五</value>
+  </data>
+  <data name="LunarDay6" xml:space="preserve">
+    <value>初六</value>
+  </data>
+  <data name="LunarDay7" xml:space="preserve">
+    <value>初七</value>
+  </data>
+  <data name="LunarDay8" xml:space="preserve">
+    <value>初八</value>
+  </data>
+  <data name="LunarDay9" xml:space="preserve">
+    <value>初九</value>
+  </data>
+  <data name="LunarDay10" xml:space="preserve">
+    <value>初十</value>
+  </data>
+  <data name="LunarDay11" xml:space="preserve">
+    <value>十一</value>
+  </data>
+  <data name="LunarDay12" xml:space="preserve">
+    <value>十二</value>
+  </data>
+  <data name="LunarDay13" xml:space="preserve">
+    <value>十三</value>
+  </data>
+  <data name="LunarDay14" xml:space="preserve">
+    <value>十四</value>
+  </data>
+  <data name="LunarDay15" xml:space="preserve">
+    <value>十五</value>
+  </data>
+  <data name="LunarDay16" xml:space="preserve">
+    <value>十六</value>
+  </data>
+  <data name="LunarDay17" xml:space="preserve">
+    <value>十七</value>
+  </data>
+  <data name="LunarDay18" xml:space="preserve">
+    <value>十八</value>
+  </data>
+  <data name="LunarDay19" xml:space="preserve">
+    <value>十九</value>
+  </data>
+  <data name="LunarDay20" xml:space="preserve">
+    <value>二十</value>
+  </data>
+  <data name="LunarDay21" xml:space="preserve">
+    <value>廿一</value>
+  </data>
+  <data name="LunarDay22" xml:space="preserve">
+    <value>廿二</value>
+  </data>
+  <data name="LunarDay23" xml:space="preserve">
+    <value>廿三</value>
+  </data>
+  <data name="LunarDay24" xml:space="preserve">
+    <value>廿四</value>
+  </data>
+  <data name="LunarDay25" xml:space="preserve">
+    <value>廿五</value>
+  </data>
+  <data name="LunarDay26" xml:space="preserve">
+    <value>廿六</value>
+  </data>
+  <data name="LunarDay27" xml:space="preserve">
+    <value>廿七</value>
+  </data>
+  <data name="LunarDay28" xml:space="preserve">
+    <value>廿八</value>
+  </data>
+  <data name="LunarDay29" xml:space="preserve">
+    <value>廿九</value>
+  </data>
+  <data name="LunarDay30" xml:space="preserve">
+    <value>三十</value>
+  </data>
+</root>

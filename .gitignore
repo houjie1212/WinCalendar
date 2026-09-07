@@ -1,0 +1,6 @@
+bin/
+obj/
+Checks/bin/
+Checks/obj/
+publish/
+*.user
