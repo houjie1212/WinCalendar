@@ -30,6 +30,7 @@ AppMutex=Local\WinCalendar
 CloseApplications=no
 RestartApplications=no
 UsePreviousAppDir=yes
+DisableDirPage=no
 UsePreviousTasks=yes
 DisableProgramGroupPage=yes
 LanguageDetectionMethod=uilanguage
@@ -95,6 +96,13 @@ var
   KeepUserData: Boolean;
 
 #include "UninstallData.iss"
+
+// 为主题复选框预留内部空间，避免高 DPI 下图标向左扩展时被裁切。
+procedure InitializeWizard();
+begin
+  WizardForm.TasksList.MinItemHeight := ScaleY(24);
+  WizardForm.TasksList.Offset := ScaleX(12);
+end;
 
 function InitializeUninstall(): Boolean;
 var
