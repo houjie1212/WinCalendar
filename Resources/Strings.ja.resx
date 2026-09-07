@@ -111,12 +111,6 @@
   <data name="WorkFull" xml:space="preserve">
     <value>中国の振替出勤日</value>
   </data>
-  <data name="UnknownYear" xml:space="preserve">
-    <value>この年の休業・出勤日データは未取得です。</value>
-  </data>
-  <data name="HolidayFailed" xml:space="preserve">
-    <value>休日データを更新できません。保存済みデータを使用します。</value>
-  </data>
   <data name="Refreshing" xml:space="preserve">
     <value>更新中…</value>
   </data>
@@ -152,9 +146,6 @@
   </data>
   <data name="Language" xml:space="preserve">
     <value>表示言語は Windows、日付形式は地域設定に従います。</value>
-  </data>
-  <data name="ChinaCalendar" xml:space="preserve">
-    <value>中国の祝休日 · 現地時刻</value>
   </data>
   <data name="Privacy" xml:space="preserve">
     <value>リンクはこの端末に保存され、購読内容は原文で表示されます。</value>
@@ -198,12 +189,6 @@
   <data name="NewYearsEve" xml:space="preserve">
     <value>旧暦の大晦日</value>
   </data>
-  <data name="Leap" xml:space="preserve">
-    <value>閏月</value>
-  </data>
-  <data name="LunarFormat" xml:space="preserve">
-    <value>旧暦 {0}/{1}</value>
-  </data>
   <data name="Blue" xml:space="preserve">
     <value>青</value>
   </data>
@@ -222,130 +207,19 @@
   <data name="Red" xml:space="preserve">
     <value>赤</value>
   </data>
-  <data name="LunarMonth1" xml:space="preserve">
-    <value>1</value>
+  <data name="LocalTime" xml:space="preserve">
+    <value>現地時刻</value>
   </data>
-  <data name="LunarMonth2" xml:space="preserve">
-    <value>2</value>
+  <data name="SubscriptionType" xml:space="preserve">
+    <value>購読の種類</value>
   </data>
-  <data name="LunarMonth3" xml:space="preserve">
-    <value>3</value>
+  <data name="OrdinaryCalendar" xml:space="preserve">
+    <value>通常のカレンダー</value>
   </data>
-  <data name="LunarMonth4" xml:space="preserve">
-    <value>4</value>
+  <data name="ChinaHolidays" xml:space="preserve">
+    <value>中国の祝日</value>
   </data>
-  <data name="LunarMonth5" xml:space="preserve">
-    <value>5</value>
-  </data>
-  <data name="LunarMonth6" xml:space="preserve">
-    <value>6</value>
-  </data>
-  <data name="LunarMonth7" xml:space="preserve">
-    <value>7</value>
-  </data>
-  <data name="LunarMonth8" xml:space="preserve">
-    <value>8</value>
-  </data>
-  <data name="LunarMonth9" xml:space="preserve">
-    <value>9</value>
-  </data>
-  <data name="LunarMonth10" xml:space="preserve">
-    <value>10</value>
-  </data>
-  <data name="LunarMonth11" xml:space="preserve">
-    <value>11</value>
-  </data>
-  <data name="LunarMonth12" xml:space="preserve">
-    <value>12</value>
-  </data>
-  <data name="LunarDay1" xml:space="preserve">
-    <value>1</value>
-  </data>
-  <data name="LunarDay2" xml:space="preserve">
-    <value>2</value>
-  </data>
-  <data name="LunarDay3" xml:space="preserve">
-    <value>3</value>
-  </data>
-  <data name="LunarDay4" xml:space="preserve">
-    <value>4</value>
-  </data>
-  <data name="LunarDay5" xml:space="preserve">
-    <value>5</value>
-  </data>
-  <data name="LunarDay6" xml:space="preserve">
-    <value>6</value>
-  </data>
-  <data name="LunarDay7" xml:space="preserve">
-    <value>7</value>
-  </data>
-  <data name="LunarDay8" xml:space="preserve">
-    <value>8</value>
-  </data>
-  <data name="LunarDay9" xml:space="preserve">
-    <value>9</value>
-  </data>
-  <data name="LunarDay10" xml:space="preserve">
-    <value>10</value>
-  </data>
-  <data name="LunarDay11" xml:space="preserve">
-    <value>11</value>
-  </data>
-  <data name="LunarDay12" xml:space="preserve">
-    <value>12</value>
-  </data>
-  <data name="LunarDay13" xml:space="preserve">
-    <value>13</value>
-  </data>
-  <data name="LunarDay14" xml:space="preserve">
-    <value>14</value>
-  </data>
-  <data name="LunarDay15" xml:space="preserve">
-    <value>15</value>
-  </data>
-  <data name="LunarDay16" xml:space="preserve">
-    <value>16</value>
-  </data>
-  <data name="LunarDay17" xml:space="preserve">
-    <value>17</value>
-  </data>
-  <data name="LunarDay18" xml:space="preserve">
-    <value>18</value>
-  </data>
-  <data name="LunarDay19" xml:space="preserve">
-    <value>19</value>
-  </data>
-  <data name="LunarDay20" xml:space="preserve">
-    <value>20</value>
-  </data>
-  <data name="LunarDay21" xml:space="preserve">
-    <value>21</value>
-  </data>
-  <data name="LunarDay22" xml:space="preserve">
-    <value>22</value>
-  </data>
-  <data name="LunarDay23" xml:space="preserve">
-    <value>23</value>
-  </data>
-  <data name="LunarDay24" xml:space="preserve">
-    <value>24</value>
-  </data>
-  <data name="LunarDay25" xml:space="preserve">
-    <value>25</value>
-  </data>
-  <data name="LunarDay26" xml:space="preserve">
-    <value>26</value>
-  </data>
-  <data name="LunarDay27" xml:space="preserve">
-    <value>27</value>
-  </data>
-  <data name="LunarDay28" xml:space="preserve">
-    <value>28</value>
-  </data>
-  <data name="LunarDay29" xml:space="preserve">
-    <value>29</value>
-  </data>
-  <data name="LunarDay30" xml:space="preserve">
-    <value>30</value>
+  <data name="HolidayConflict" xml:space="preserve">
+    <value>休日と振替出勤の情報が競合しています。予定の詳細を確認してください。</value>
   </data>
 </root>

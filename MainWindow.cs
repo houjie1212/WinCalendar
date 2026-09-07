@@ -19,7 +19,6 @@ namespace WinCalendar;
 public sealed class MainWindow : Window
 {
     private readonly Settings settings;
-    private readonly Holidays holidays = new();
     private readonly Subscriptions subscriptions;
     private readonly ClockHook? clock;
     private readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(2) };
@@ -120,7 +119,7 @@ public sealed class MainWindow : Window
         int y = point.Y <= area.Top ? area.Top + 8 : area.Bottom - height - 8;
         SetWindowPos(new WindowInteropHelper(this).Handle, 0, x, y, w, height, 0x0014);
     }
-    private string StatusText() => clock == null ? L.T("Preview") : busy ? L.T("Refreshing") : dataError ? L.T("SaveFailed") : !clock.Available ? L.T("ClockMissing") : !holidays.Known(month.Year) ? L.T("UnknownYear") : settings.Sources.Any(x => x.Enabled && x.Failed) ? L.T("RefreshFailed") : holidays.Failed ? L.T("HolidayFailed") : L.T("ClockReady");
+    private string StatusText() => clock == null ? L.T("Preview") : busy ? L.T("Refreshing") : dataError ? L.T("SaveFailed") : !clock.Available ? L.T("ClockMissing") : settings.Sources.Any(x => x.Enabled && x.Failed) ? L.T("RefreshFailed") : L.T("ClockReady");
     private async Task RefreshData(bool network)
     {
         if (busy) return;
@@ -129,7 +128,6 @@ public sealed class MainWindow : Window
         var displayed = month;
         try
         {
-            if (network && (DateTimeOffset.Now - holidays.LastCheck > TimeSpan.FromDays(1) || !holidays.Known(month.Year))) await holidays.Refresh(month.Year);
             var begin = GridStart(displayed, (DayOfWeek)(settings.FirstDay ?? (int)L.Format.DateTimeFormat.FirstDayOfWeek));
             await subscriptions.Refresh(begin, begin.AddDays(42), network);
             dataError = false;
@@ -154,7 +152,7 @@ public sealed class MainWindow : Window
         buttons.Children.Add(Ui.Button("×", "Close", Hide));
         DockPanel.SetDock(buttons, Dock.Right); title.Children.Add(buttons);
         title.Children.Add(Ui.Text("WinCalendar", 21, true)); top.Children.Add(title);
-        top.Children.Add(Ui.Text(L.T("ChinaCalendar"), 12));
+        top.Children.Add(Ui.Text(L.T("LocalTime"), 12));
         var nav = new DockPanel { Margin = new Thickness(0, 16, 0, 12) };
         var navButtons = new StackPanel { Orientation = Orientation.Horizontal };
         navButtons.Children.Add(Ui.Button("‹", "Previous", () => MoveMonth(-1)));
@@ -170,9 +168,9 @@ public sealed class MainWindow : Window
         var begin = GridStart(month, (DayOfWeek)first);
         for (int i = 0; i < 42; i++)
         {
-            DateTime date = begin.AddDays(i); var holiday = holidays.Get(date);
+            DateTime date = begin.AddDays(i); var holiday = subscriptions.HolidayForDay(date);
             var cell = new Grid { Height = 51, Margin = new Thickness(1) };
-            var name = holidays.Label(date);
+            var name = holiday.Names.Select(L.Festival).FirstOrDefault() ?? "";
             var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(1, 6, 1, 1) };
             var number = Ui.Text(date.Day.ToString(L.Format), 15, date == DateTime.Today); number.HorizontalAlignment = HorizontalAlignment.Center;
             if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday) number.Foreground = Brushes.Coral;
@@ -181,14 +179,16 @@ public sealed class MainWindow : Window
             var dots = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Height = 5 };
             foreach (var color in subscriptions.ForDay(date).Select(x => x.Color).Distinct().Take(4)) dots.Children.Add(new System.Windows.Shapes.Ellipse { Fill = Ui.Brush(color), Width = 3, Height = 3, Margin = new Thickness(1) });
             stack.Children.Add(dots); cell.Children.Add(stack);
-            if (holiday != null)
+            if (holiday.IsOffDay.HasValue)
             {
-                var badge = new Border { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, CornerRadius = new CornerRadius(2), Padding = new Thickness(2, 0, 2, 0), Background = Ui.Brush(holiday.IsOffDay ? "#16744A" : "#A94A12"), Child = new TextBlock { Text = L.T(holiday.IsOffDay ? "Off" : "Work"), FontSize = 8, Foreground = Brushes.White } };
+                var badge = new Border { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, CornerRadius = new CornerRadius(2), Padding = new Thickness(2, 0, 2, 0), Background = Ui.Brush(holiday.IsOffDay == true ? "#16744A" : "#A94A12"), Child = new TextBlock { Text = L.T(holiday.IsOffDay == true ? "Off" : "Work"), FontSize = 8, Foreground = Brushes.White } };
                 cell.Children.Add(badge);
             }
             var b = new Button { Content = cell, Padding = new Thickness(0), Margin = new Thickness(1), HorizontalContentAlignment = HorizontalAlignment.Stretch, BorderThickness = new Thickness(date == DateTime.Today ? 1 : 0), BorderBrush = Ui.Brush("#3B82F6"), Opacity = date.Month == month.Month ? 1 : .55 };
             if (date == selected) { b.Background = Ui.Brush("#285AA8"); b.Foreground = Brushes.White; number.Foreground = Brushes.White; }
-            var accessible = date.ToString("D", L.Format) + " · " + name + (holiday == null ? "" : " · " + L.T(holiday.IsOffDay ? "OffFull" : "WorkFull") + " · " + L.Festival(holiday.Name));
+            var accessible = date.ToString("D", L.Format) + " · " + string.Join(" · ", holiday.Names.Select(L.Festival));
+            if (holiday.Conflict) accessible += " · " + L.T("HolidayConflict");
+            else if (holiday.IsOffDay.HasValue) accessible += " · " + L.T(holiday.IsOffDay.Value ? "OffFull" : "WorkFull");
             b.ToolTip = accessible; AutomationProperties.SetName(b, accessible);
             b.Click += (_, _) => { selected = date; Render(); }; grid.Children.Add(b);
         }
@@ -203,6 +203,7 @@ public sealed class MainWindow : Window
         foreach (var ev in items)
         {
             var entry = new StackPanel(); entry.Children.Add(Ui.Text(ev.Title, 14, true));
+            entry.Children.Add(Ui.Text(settings.Sources.FirstOrDefault(s => s.Id == ev.SourceId)?.Name ?? "", 11));
             entry.Children.Add(Ui.Text(EventTime(ev), 12));
             var b = new Button { Content = entry, HorizontalContentAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 2, 0, 4), Padding = new Thickness(10, 6, 8, 6), BorderThickness = new Thickness(3, 0, 0, 0), BorderBrush = Ui.Brush(ev.Color) };
             AutomationProperties.SetName(b, ev.Title + " " + EventTime(ev)); b.Click += (_, _) => Detail(ev); list.Children.Add(b);
@@ -218,7 +219,7 @@ public sealed class MainWindow : Window
         {
             var w = Ui.Dialog(this, "Details");
             var panel = new StackPanel { Margin = new Thickness(20) };
-            panel.Children.Add(Ui.Text(ev.Title, 20, true)); panel.Children.Add(Ui.Text(EventTime(ev), 13));
+            panel.Children.Add(Ui.Text(ev.Title, 20, true)); panel.Children.Add(Ui.Text(settings.Sources.FirstOrDefault(s => s.Id == ev.SourceId)?.Name ?? "", 12)); panel.Children.Add(Ui.Text(EventTime(ev), 13));
             if (ev.Location.Length > 0) panel.Children.Add(Ui.Text(ev.Location, 14));
             panel.Children.Add(new TextBox { Text = ev.Description, IsReadOnly = true, TextWrapping = TextWrapping.Wrap, MaxHeight = 320, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 16, 0, 12) });
             panel.Children.Add(Ui.Button(L.T("Close"), "Close", w.Close)); w.Content = panel; w.ShowDialog();

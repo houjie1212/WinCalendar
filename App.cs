@@ -13,7 +13,7 @@ public sealed class App : Application
     [STAThread]
     public static int Main(string[] args)
     {
-        if (args.Length == 7 && args[0] == "--parse-ics") return IcsParser.Worker(args);
+        if ((args.Length == 7 || args.Length == 8) && args[0] == "--parse-ics") return IcsParser.Worker(args);
         if (args.Length == 2 && args[0] == "--integration-check") return IntegrationChecks.Run(args[1]).GetAwaiter().GetResult();
         L.Reload();
         if (args.Length == 2 && args[0] == "--render-previews") return IntegrationChecks.RenderPreviews(args[1]);

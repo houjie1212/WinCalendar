@@ -13,12 +13,15 @@ using System.Threading.Tasks;
 
 namespace WinCalendar;
 
+// 订阅类型决定是否参与日期格的节假日标识。
+public enum SubscriptionKind { Ordinary, ChinaHolidays }
 public sealed class Subscription
 {
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "";
     public string Url { get; set; } = "";
     public string Color { get; set; } = "#2563EB";
+    public SubscriptionKind Kind { get; set; }
     public bool Enabled { get; set; } = true;
     public DateTimeOffset? LastSuccess { get; set; }
     [JsonIgnore] public bool Failed { get; set; }
@@ -94,84 +97,5 @@ public static class Download
             return Encoding.UTF8.GetString(memory.ToArray()).TrimStart('\uFEFF');
         }
         throw new InvalidDataException();
-    }
-}
-public sealed record Holiday([property: JsonRequired] string Name, [property: JsonRequired] DateTime Date, [property: JsonRequired] bool IsOffDay);
-public sealed class HolidayYear
-{
-    public int Year { get; set; }
-    public List<string> Papers { get; set; } = new();
-    public List<Holiday> Days { get; set; } = new();
-}
-public sealed class Holidays
-{
-    private readonly Dictionary<int, HolidayYear> years = new();
-    public DateTimeOffset LastCheck { get; private set; }
-    public bool Failed { get; private set; }
-    public Holidays()
-    {
-        foreach (var resource in Assembly.GetExecutingAssembly().GetManifestResourceNames().Where(x => x.Contains(".Data.") && x.EndsWith(".json")))
-        {
-            using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resource)!;
-            using var reader = new StreamReader(stream);
-            var year = Parse(reader.ReadToEnd()); years[year.Year] = year;
-        }
-        if (Directory.Exists(Store.Root)) foreach (var file in Directory.GetFiles(Store.Root, "holiday-*.json"))
-            try { var year = Parse(File.ReadAllText(file)); years[year.Year] = year; } catch { Failed = true; }
-    }
-    public static HolidayYear Parse(string json)
-    {
-        var y = JsonSerializer.Deserialize<HolidayYear>(json, Store.Json) ?? throw new InvalidDataException();
-        if (y.Year is < 1900 or > 2200 || y.Papers.Count == 0 || y.Days.Count == 0 || y.Days.Any(x => string.IsNullOrWhiteSpace(x.Name) || Math.Abs(x.Date.Year - y.Year) > 1)) throw new InvalidDataException();
-        return y;
-    }
-    public bool Known(int year) => years.ContainsKey(year);
-    public Holiday? Get(DateTime date) => years.OrderByDescending(x => x.Key).SelectMany(x => x.Value.Days).FirstOrDefault(x => x.Date.Date == date.Date);
-    public async Task Refresh(int visibleYear)
-    {
-        Failed = false;
-        foreach (var year in new[] { visibleYear - 1, visibleYear, visibleYear + 1 }.Distinct())
-        {
-            try
-            {
-                var json = await Download.Text(new Uri($"https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/{year}.json"));
-                var parsed = Parse(json);
-                if (parsed.Year != year) throw new InvalidDataException();
-                Store.Write(Store.PathFor($"holiday-{year}.json"), json);
-                years[year] = parsed;
-            }
-            catch { if (year == visibleYear) Failed = true; }
-        }
-        LastCheck = DateTimeOffset.Now;
-    }
-    private static readonly ChineseLunisolarCalendar Lunar = new();
-    public static string? TraditionalKey(DateTime date)
-    {
-        if (date < Lunar.MinSupportedDateTime || date > Lunar.MaxSupportedDateTime.AddDays(-1)) return null;
-        int year = Lunar.GetYear(date), month = Lunar.GetMonth(date), day = Lunar.GetDayOfMonth(date), leap = Lunar.GetLeapMonth(year);
-        if (Lunar.GetYear(date.AddDays(1)) != year) return "NewYearsEve";
-        if (month == leap) return null;
-        if (leap > 0 && month > leap) month--;
-        return (month, day) switch
-        {
-            (1, 1) => "SpringFestival", (1, 15) => "Lantern", (5, 5) => "DragonBoat", (7, 7) => "Qixi",
-            (7, 15) => "Ghost", (8, 15) => "MidAutumn", (9, 9) => "DoubleNinth", (12, 8) => "Laba", _ => null
-        };
-    }
-    public static string LunarLabel(DateTime date)
-    {
-        if (date < Lunar.MinSupportedDateTime || date > Lunar.MaxSupportedDateTime) return "";
-        int month = Lunar.GetMonth(date), day = Lunar.GetDayOfMonth(date), leap = Lunar.GetLeapMonth(Lunar.GetYear(date));
-        bool isLeap = month == leap;
-        if (leap > 0 && month >= leap) month--;
-        if (L.Ui.Name.StartsWith("zh")) return day == 1 ? (isLeap ? L.T("Leap") : "") + L.T("LunarMonth" + month) : L.T("LunarDay" + day);
-        return string.Format(L.T("LunarFormat"), month, day) + (isLeap ? " " + L.T("Leap") : "");
-    }
-    public string Label(DateTime date)
-    {
-        var traditional = TraditionalKey(date);
-        if (traditional != null) return L.T(traditional);
-        var holiday = Get(date);
-        return holiday is { IsOffDay: true } ? L.Festival(holiday.Name) : LunarLabel(date);
     }
 }

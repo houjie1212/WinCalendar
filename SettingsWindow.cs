@@ -102,6 +102,8 @@ public sealed class SettingsWindow : Window
         AutomationProperties.SetName(name, L.T("Name")); AutomationProperties.SetName(url, L.T("Url"));
         panel.Children.Add(Ui.Label("Name")); panel.Children.Add(name);
         panel.Children.Add(Ui.Label("Url")); panel.Children.Add(url);
+        var kind = new ComboBox { ItemsSource = new[] { L.T("OrdinaryCalendar"), L.T("ChinaHolidays") }, SelectedIndex = original?.Kind == SubscriptionKind.ChinaHolidays ? 1 : 0, Margin = new Thickness(0, 4, 0, 12) };
+        AutomationProperties.SetName(kind, L.T("SubscriptionType")); panel.Children.Add(Ui.Label("SubscriptionType")); panel.Children.Add(kind);
         var colors = new[] { "#2563EB", "#16834A", "#C95D12", "#8B5CF6", "#DB2777", "#DC2626" };
         var color = new ComboBox { ItemsSource = new[] { "Blue", "Green", "Orange", "Purple", "Pink", "Red" }.Select(L.T).ToArray(), SelectedIndex = Math.Max(0, Array.IndexOf(colors, original?.Color ?? colors[0])), Margin = new Thickness(0, 4, 0, 16) };
         AutomationProperties.SetName(color, L.T("Color")); panel.Children.Add(Ui.Label("Color")); panel.Children.Add(color);
@@ -113,12 +115,16 @@ public sealed class SettingsWindow : Window
             var source = original ?? new Subscription();
             // 更换链接使用新缓存键，失败时不会误显示旧链接的日程。
             if (source.Url != uri.AbsoluteUri) { source.Id = Guid.NewGuid().ToString("N"); source.LastSuccess = null; }
+            source.Kind = kind.SelectedIndex == 1 ? SubscriptionKind.ChinaHolidays : SubscriptionKind.Ordinary;
             source.Name = name.Text.Trim(); source.Url = uri.AbsoluteUri; source.Color = colors[color.SelectedIndex];
             if (original == null) draft.Sources.Add(source);
             w.DialogResult = true;
         }));
         void Translate()
         {
+            var selectedKind = kind.SelectedIndex;
+            kind.ItemsSource = new[] { L.T("OrdinaryCalendar"), L.T("ChinaHolidays") }; kind.SelectedIndex = selectedKind;
+            AutomationProperties.SetName(kind, L.T("SubscriptionType"));
             var index = color.SelectedIndex;
             color.ItemsSource = new[] { "Blue", "Green", "Orange", "Purple", "Pink", "Red" }.Select(L.T).ToArray(); color.SelectedIndex = index;
             AutomationProperties.SetName(name, L.T("Name")); AutomationProperties.SetName(url, L.T("Url")); AutomationProperties.SetName(color, L.T("Color")); error.Text = "";

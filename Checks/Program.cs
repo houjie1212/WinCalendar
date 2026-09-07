@@ -20,19 +20,8 @@ try
         Check(set.Cast<DictionaryEntry>().All(x => !string.IsNullOrWhiteSpace(x.Value?.ToString())), "无空翻译 " + language);
     }
     Check(new DateTime(2026, 9, 7).ToString("d", CultureInfo.GetCultureInfo("ja-JP")) == "2026/09/07", "日本区域日期格式");
-    var holiday = new Holidays();
-    Check(holiday.Get(new DateTime(2026, 10, 1))?.IsOffDay == true, "国庆放假");
-    Check(holiday.Get(new DateTime(2026, 10, 10))?.IsOffDay == false, "周末补班");
-    Check(holiday.Get(new DateTime(2026, 9, 6)) == null, "普通周末不标休");
-    Check(!holiday.Known(2099), "未知年份不推算");
-    Reject(() => Holidays.Parse("{\"year\":2026,\"papers\":[\"https://www.gov.cn/\"],\"days\":[{\"name\":\"节日\",\"date\":\"2026-01-01\"}]}"), "缺失休班字段不能默认为补班");
     Check(MainWindow.GridStart(new DateTime(2026, 9, 1), DayOfWeek.Sunday).AddDays(41) == new DateTime(2026, 10, 10), "订阅覆盖完整六周网格");
-    Check(Holidays.TraditionalKey(new DateTime(2026, 2, 17)) == "SpringFestival", "春节");
-    Check(Holidays.TraditionalKey(new DateTime(2026, 2, 16)) == "NewYearsEve", "除夕");
-    Check(Holidays.TraditionalKey(new DateTime(2026, 9, 25)) == "MidAutumn", "中秋");
-    var lunar = new ChineseLunisolarCalendar();
-    var leap = lunar.GetLeapMonth(2023);
-    Check(Holidays.TraditionalKey(lunar.ToDateTime(2023, leap, 1, 0, 0, 0, 0)) == null, "闰月不重复节日");
+    Check(System.Text.Json.JsonSerializer.Deserialize<Subscription>("{}")!.Kind == SubscriptionKind.Ordinary, "旧订阅默认普通日历");
     Check(Download.Validate("webcal://example.com/a.ics?secret=test").Scheme == "https", "Webcal 标准化");
     Reject(() => Download.Validate("http://example.com/a.ics"), "拒绝明文 HTTP");
     Reject(() => Download.Validate("file:///C:/private.ics"), "拒绝文件地址");
@@ -73,6 +62,43 @@ try
     Check(IcsParser.Parse(folded, from, to, "one", "blue").Single().Title == "中文续行", "ICS 折行文本");
     Reject(() => IcsParser.Parse("not ICS", from, to, "one", "blue"), "非法 ICS");
     Reject(() => IcsParser.Parse(allDay, from, from.AddYears(1), "one", "blue"), "限制展开范围");
+
+    // 用完整 ICS 样本校验类型、源日期与日期格聚合，避免依赖当前系统时区。
+    string HolidayIcs(string title, string dates = "DTSTART;VALUE=DATE:20260925\nDTEND;VALUE=DATE:20260928") => Wrap("BEGIN:VEVENT\nUID:holiday\n" + dates + "\nSUMMARY:" + title + "\nDESCRIPTION:假期 补班 不参与识别\nEND:VEVENT");
+    var offIcs = HolidayIcs("中秋节 假期 第1天/共3天");
+    var off = IcsParser.Parse(offIcs, from, to, "a", "blue", SubscriptionKind.ChinaHolidays).Single();
+    Check(off.IsOffDay == true && off.HolidayName == "中秋节", "按完整假期标题识别");
+    Check(off.HolidayOn(new DateTime(2026, 9, 27)) && !off.HolidayOn(new DateTime(2026, 9, 28)), "假期源日期结束排他");
+    Check(IcsParser.Parse(offIcs, from, to, "a", "blue").Single().HolidayName == null, "普通订阅不生成角标");
+    foreach (var title in new[] { "中秋节", "中秋节 假期", "中秋节 假期 第4天/共3天", "中秋节 假期 第1天/共3天 会议" })
+        Check(IcsParser.Parse(HolidayIcs(title), from, to, "a", "blue", SubscriptionKind.ChinaHolidays).Single().HolidayName == null, "未知标题不猜测 " + title);
+    var work = IcsParser.Parse(HolidayIcs("中秋节 补班 第1天/共1天", "DTSTART;TZID=Pacific/Kiritimati:20260925T003000\nDTEND;TZID=Pacific/Kiritimati:20260925T013000"), from, to, "b", "blue", SubscriptionKind.ChinaHolidays).Single();
+    Check(work.IsOffDay == false && work.SourceStart == new DateTime(2026, 9, 25) && work.SourceEnd == new DateTime(2026, 9, 26), "定时补班按源日期标识");
+    Check(work.Start == TimeZoneInfo.ConvertTimeFromUtc(new DateTime(2026, 9, 24, 10, 30, 0, DateTimeKind.Utc), TimeZoneInfo.Local), "补班详情按本地时区");
+    var crossYear = IcsParser.Parse(HolidayIcs("元旦 假期 第1天/共3天", "DTSTART;VALUE=DATE:20261231\nDTEND;VALUE=DATE:20270103"), new DateTime(2027, 1, 1), new DateTime(2027, 2, 1), "a", "blue", SubscriptionKind.ChinaHolidays).Single();
+    Check(crossYear.HolidayOn(new DateTime(2027, 1, 2)) && !crossYear.HolidayOn(new DateTime(2027, 1, 3)), "跨年订阅日期");
+    var sources = new Settings();
+    var subscriptionA = new Subscription { Id = "a", Kind = SubscriptionKind.ChinaHolidays };
+    var subscriptionB = new Subscription { Id = "b", Kind = SubscriptionKind.ChinaHolidays };
+    var calendar = new Subscriptions(sources);
+    var date = new DateTime(2026, 9, 25);
+    calendar.Events.Add(off);
+    Check(calendar.HolidayForDay(date).Names.Length == 0, "无订阅时不显示节假日");
+    sources.Sources.Add(subscriptionA);
+    Check(calendar.HolidayForDay(date).IsOffDay == true, "添加中国节假日订阅生效");
+    subscriptionA.Enabled = false;
+    Check(calendar.HolidayForDay(date).Names.Length == 0, "停用后立即移除标记");
+    subscriptionA.Enabled = true; subscriptionA.Kind = SubscriptionKind.Ordinary;
+    Check(calendar.HolidayForDay(date).Names.Length == 0, "改回普通类型立即移除标记");
+    subscriptionA.Kind = SubscriptionKind.ChinaHolidays;
+    sources.Sources.Add(subscriptionB); calendar.Events.Add(work);
+    Check(calendar.HolidayForDay(date).Conflict && calendar.HolidayForDay(date).IsOffDay == null && calendar.ForDay(date).Count() == 2, "休班冲突隐藏角标并保留详情");
+    calendar.Events.Remove(work); calendar.Events.Add(off with { SourceId = "b", HolidayName = "其他节日" });
+    Check(!calendar.HolidayForDay(date).Conflict && calendar.HolidayForDay(date).Names.SequenceEqual(new[] { "中秋节", "其他节日" }), "同类合并且名称按订阅顺序");
+    sources.Sources.Clear();
+    Check(calendar.HolidayForDay(date).Names.Length == 0 && !calendar.ForDay(date).Any(), "删除订阅立即移除内容");
+    cfg.Sources[0].Kind = SubscriptionKind.ChinaHolidays; Store.Save(cfg);
+    Check(Store.Load().Sources[0].Kind == SubscriptionKind.ChinaHolidays, "订阅类型持久化");
     Console.WriteLine($"{passed} checks passed");
 }
 catch (Exception e) { Console.WriteLine("FAIL " + e.Message); Environment.ExitCode = 1; }

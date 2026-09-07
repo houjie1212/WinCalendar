@@ -55,14 +55,16 @@ internal static class IntegrationChecks
             Assert(feed.Events.Count == 1, "离线缓存可读");
             await feed.Refresh(from, to, true);
             Assert(source.Failed && feed.Events.Count == 1 && File.ReadAllText(input) == original, "网络失败保留缓存");
-            source.Url = "https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/2026.ics";
+            source.Kind = SubscriptionKind.ChinaHolidays;
+            source.Url = "https://raw.githubusercontent.com/lanceliao/china-holiday-calender/master/holidayCal.ics";
             await feed.Refresh(from, to, true);
             Assert(!source.Failed && source.LastSuccess != null && feed.Events.Count > 0, "公开 HTTPS ICS 下载与解析");
+            Assert(feed.HolidayForDay(new DateTime(2026, 9, 25)).IsOffDay == true && feed.HolidayForDay(new DateTime(2026, 9, 20)).IsOffDay == false, "真实订阅休班标识与子进程序列化");
             int count = feed.Events.Count;
             await feed.Refresh(from, to, true);
             Assert(feed.Events.Count == count, "连续刷新不重复");
             var saved = File.ReadAllText(input);
-            source.Url = "https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/README.md";
+            source.Url = "https://raw.githubusercontent.com/lanceliao/china-holiday-calender/master/README.md";
             await feed.Refresh(from, to, true);
             Assert(source.Failed && feed.Events.Count == count && File.ReadAllText(input) == saved, "非法订阅更新保留旧缓存");
             var broken = Store.PathFor("broken.ics"); File.WriteAllText(broken, "invalid");
