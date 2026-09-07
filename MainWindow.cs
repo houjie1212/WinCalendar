@@ -26,6 +26,10 @@ public sealed class MainWindow : Window
     private DateTimeOffset lastNetwork = DateTimeOffset.MinValue;
     private bool busy, modal, exit, dataError;
     private Point anchor;
+    private ComboBox yearPicker = new(), monthPicker = new();
+    private bool renderPending;
+    private Rect pickerBounds = Rect.Empty;
+    private bool PickerOpen => yearPicker.IsDropDownOpen || monthPicker.IsDropDownOpen;
     private TextBlock status = new();
     private DateTime lastDay = DateTime.Today;
     private readonly bool preview;
@@ -43,10 +47,17 @@ public sealed class MainWindow : Window
         {
             clock = new(Dispatcher);
             clock.Toggle += Toggle;
-            clock.OutsideClick += p => { if (IsVisible && !modal && !preview && !PhysicalBounds().Contains(p)) Hide(); };
+            clock.OutsideClick += p => { if (IsVisible && !modal && !preview && !PhysicalBounds().Contains(p) && !PickerContains(p)) Hide(); };
         }
-        Deactivated += (_, _) => { if (!modal && !preview) Hide(); };
-        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape && !modal) { Hide(); e.Handled = true; } };
+        Deactivated += (_, _) => { if (!modal && !preview && !PickerOpen) Hide(); };
+        PreviewKeyDown += (_, e) =>
+        {
+            if (e.Key != Key.Escape || modal) return;
+            if (PickerOpen) { yearPicker.IsDropDownOpen = false; monthPicker.IsDropDownOpen = false; }
+            else Hide();
+            e.Handled = true;
+        };
+        IsVisibleChanged += (_, _) => { if (!IsVisible) { yearPicker.IsDropDownOpen = false; monthPicker.IsDropDownOpen = false; } };
         Closing += (_, e) => { if (!exit) { e.Cancel = true; Hide(); } };
         SourceInitialized += (_, _) =>
         {
@@ -140,16 +151,47 @@ public sealed class MainWindow : Window
         // 加载期间的多次翻月合并为最新月份；原有日程在后台加载完成前继续显示。
         if (displayed != month) await RefreshData(false);
     }
-    private async void MoveMonth(int offset)
+    private void MoveMonth(int offset) => ChangeMonth(month.AddMonths(offset));
+    // 所有年月入口共用同一切换逻辑，不改变选中日期或重复加载相同月份。
+    private async void ChangeMonth(DateTime next)
     {
-        var next = month.AddMonths(offset);
-        if (next.Year is < 1901 or > 2100) return;
+        if (next.Year is < 1901 or > 2100 || next == month) return;
         month = next; Render(); await RefreshData(false);
+    }
+    // 下拉弹窗使用独立 HWND，需按物理坐标纳入面板内部区域。
+    private bool PickerContains(Point point)
+    {
+        foreach (var picker in new[] { yearPicker, monthPicker })
+            if (picker.IsDropDownOpen && picker.Template.FindName("PART_Popup", picker) is Popup popup &&
+                popup.Child != null && PresentationSource.FromVisual(popup.Child) is HwndSource source &&
+                GetWindowRect(source.Handle, out var rect))
+                pickerBounds = new Rect(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+        return pickerBounds.Contains(point);
+    }
+    private ComboBox MonthSelector(string key, object[] items, int index)
+    {
+        var picker = new ComboBox
+        {
+            ItemsSource = items, SelectedIndex = index, IsEditable = false, MaxDropDownHeight = 280,
+            MinWidth = 60, Margin = new Thickness(0, 0, 6, 0), VerticalContentAlignment = VerticalAlignment.Center,
+            FontSize = 14, ToolTip = L.T(key)
+        };
+        AutomationProperties.SetName(picker, L.T(key));
+        picker.DropDownOpened += (_, _) => Dispatcher.BeginInvoke(() => PickerContains(new Point()), DispatcherPriority.Loaded);
+        picker.DropDownClosed += (_, _) => Dispatcher.BeginInvoke(() =>
+        {
+            // 等本次点击处理结束再清除弹窗范围，避免钩子误判刚选中的列表项。
+            if (PickerOpen) return;
+            pickerBounds = Rect.Empty;
+            if (renderPending) Render();
+        }, DispatcherPriority.ContextIdle);
+        picker.PreviewMouseWheel += (_, e) => { if (!picker.IsDropDownOpen) e.Handled = true; };
+        return picker;
     }
     // 仅月历区域接管滚轮，日程列表继续使用自身滚动行为。
     private void CalendarMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (e.Delta == 0) return;
+        if (e.Delta == 0 || PickerOpen || yearPicker.IsMouseOver || monthPicker.IsMouseOver) return;
         e.Handled = true;
         MoveMonth(e.Delta > 0 ? -1 : 1);
     }
@@ -161,6 +203,10 @@ public sealed class MainWindow : Window
     }
     private void Render()
     {
+        // 异步刷新仅延迟重建控件，不关闭用户正在操作的下拉列表。
+        if (PickerOpen) { renderPending = true; return; }
+        renderPending = false;
+        bool focusYear = yearPicker.IsKeyboardFocusWithin, focusMonth = monthPicker.IsKeyboardFocusWithin;
         var layout = new DockPanel { Margin = new Thickness(20, 16, 20, 12), LastChildFill = true };
         var top = new StackPanel(); DockPanel.SetDock(top, Dock.Top); layout.Children.Add(top);
         var title = new DockPanel { Margin = new Thickness(0, 0, 0, 12), LastChildFill = false };
@@ -176,7 +222,16 @@ public sealed class MainWindow : Window
         navButtons.Children.Add(Ui.Button(L.T("Today"), "Today", async () => { selected = DateTime.Today; month = new(selected.Year, selected.Month, 1); Render(); await RefreshData(false); }));
         navButtons.Children.Add(Ui.Button("›", "Next", () => MoveMonth(1)));
         DockPanel.SetDock(navButtons, Dock.Right); nav.Children.Add(navButtons);
-        nav.Children.Add(Ui.Text(month.ToString("Y", L.Format), 18, true)); top.Children.Add(nav);
+        var selectors = new Grid();
+        selectors.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
+        selectors.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(70) });
+        yearPicker = MonthSelector("SelectYear", Enumerable.Range(1901, 200).Select(y => (object)y.ToString(CultureInfo.InvariantCulture)).ToArray(), month.Year - 1901);
+        monthPicker = MonthSelector("SelectMonth", Enumerable.Range(1, 12).Select(m => (object)L.Format.DateTimeFormat.GetMonthName(m)).ToArray(), month.Month - 1);
+        // 先设置默认选项，再绑定事件，防止构造控件时触发加载。
+        yearPicker.SelectionChanged += (_, _) => { if (yearPicker.SelectedIndex >= 0) ChangeMonth(new DateTime(yearPicker.SelectedIndex + 1901, month.Month, 1)); };
+        monthPicker.SelectionChanged += (_, _) => { if (monthPicker.SelectedIndex >= 0) ChangeMonth(new DateTime(month.Year, monthPicker.SelectedIndex + 1, 1)); };
+        selectors.Children.Add(yearPicker); Grid.SetColumn(monthPicker, 1); selectors.Children.Add(monthPicker);
+        nav.Children.Add(selectors); top.Children.Add(nav);
         var weekdays = new UniformGrid { Columns = 7, Margin = new Thickness(0, 0, 0, 4) };
         int first = settings.FirstDay ?? (int)L.Format.DateTimeFormat.FirstDayOfWeek;
         for (int i = 0; i < 7; i++) weekdays.Children.Add(new TextBlock { Text = L.Format.DateTimeFormat.GetShortestDayName((DayOfWeek)((first + i) % 7)), HorizontalAlignment = HorizontalAlignment.Center, FontSize = 12, Margin = new Thickness(0, 4, 0, 4) });
@@ -240,6 +295,8 @@ public sealed class MainWindow : Window
         }
         layout.Children.Add(new ScrollViewer { Content = list, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled });
         Content = layout;
+        if (focusYear) yearPicker.Focus();
+        else if (focusMonth) monthPicker.Focus();
     }
     public static string EventTime(AgendaEvent ev) => ev.AllDay ? L.T("AllDay") : ev.Start.ToString("g", L.Format) + " – " + ev.End.ToString(ev.Start.Date == ev.End.Date ? "t" : "g", L.Format);
     private void Detail(AgendaEvent ev)

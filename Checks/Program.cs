@@ -302,6 +302,41 @@ try
     Check(calendar.SourcesForDay(date).Single().Id == "a", "停用来源移除分区");
     sources.Sources.Clear();
     Check(calendar.SourcesForDay(date).Length == 0, "删除来源移除分区");
+    // WPF 控件在独立 STA 线程检查，不接管时钟、不读取私人订阅。
+    Exception? pickerFailure = null;
+    var pickerThread = new Thread(() =>
+    {
+        try
+        {
+            var window = new MainWindow(new Settings(), true, true);
+            const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            object Field(string name) => typeof(MainWindow).GetField(name, flags)!.GetValue(window)!;
+            void Call(string name, params object[] values) => typeof(MainWindow).GetMethod(name, flags)!.Invoke(window, values);
+            var chosen = (DateTime)Field("selected");
+            Call("ChangeMonth", new DateTime(2026, 9, 1));
+            var years = (System.Windows.Controls.ComboBox)Field("yearPicker");
+            Check(years.Items.Count == 200 && years.Items[0].ToString() == "1901" && years.Items[199].ToString() == "2100", "年份下拉范围");
+            years.SelectedIndex = 2027 - 1901;
+            Check((DateTime)Field("month") == new DateTime(2027, 9, 1), "选择年份保留月份");
+            var months = (System.Windows.Controls.ComboBox)Field("monthPicker");
+            months.SelectedIndex = 11;
+            Check((DateTime)Field("month") == new DateTime(2027, 12, 1), "选择月份保留年份");
+            Call("MoveMonth", 1);
+            Check((DateTime)Field("month") == new DateTime(2028, 1, 1) && ((System.Windows.Controls.ComboBox)Field("monthPicker")).SelectedIndex == 0, "箭头跨年同步下拉");
+            var stable = Field("yearPicker");
+            Call("ChangeMonth", new DateTime(2028, 1, 1));
+            Check(ReferenceEquals(stable, Field("yearPicker")), "相同年月不重建或加载");
+            Call("ChangeMonth", new DateTime(1901, 1, 1)); Call("MoveMonth", -1);
+            Check((DateTime)Field("month") == new DateTime(1901, 1, 1), "年份下限不越界");
+            Call("ChangeMonth", new DateTime(2100, 12, 1)); Call("MoveMonth", 1);
+            Check((DateTime)Field("month") == new DateTime(2100, 12, 1), "年份上限不越界");
+            Check((DateTime)Field("selected") == chosen, "年月切换保留选中日期");
+            window.Cleanup();
+        }
+        catch (Exception e) { pickerFailure = e; }
+    });
+    pickerThread.SetApartmentState(ApartmentState.STA); pickerThread.Start(); pickerThread.Join();
+    if (pickerFailure != null) throw pickerFailure;
     Console.WriteLine($"{passed} checks passed");
 }
 catch (Exception e) { Console.WriteLine("FAIL " + e.Message); Environment.ExitCode = 1; }

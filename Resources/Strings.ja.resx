@@ -474,4 +474,10 @@
   <data name="UpdateRolledBack" xml:space="preserve">
     <value>新バージョンを起動できなかったため、以前のバージョンに戻しました。</value>
   </data>
+  <data name="SelectYear" xml:space="preserve">
+    <value>年</value>
+  </data>
+  <data name="SelectMonth" xml:space="preserve">
+    <value>月</value>
+  </data>
 </root>

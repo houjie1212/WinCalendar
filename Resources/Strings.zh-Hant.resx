@@ -474,4 +474,10 @@
   <data name="UpdateRolledBack" xml:space="preserve">
     <value>新版未成功啟動，已還原舊版本。</value>
   </data>
+  <data name="SelectYear" xml:space="preserve">
+    <value>年份</value>
+  </data>
+  <data name="SelectMonth" xml:space="preserve">
+    <value>月份</value>
+  </data>
 </root>
