@@ -115,7 +115,8 @@ public sealed class MainWindow : Window
         Height = Math.Min(710, area.Height / scale - 16);
         Width = Math.Min(440, area.Width / scale - 16);
         int w = (int)(Width * scale), height = (int)(Height * scale);
-        int x = Math.Clamp((int)point.X - w + 24, area.Left + 8, Math.Max(area.Left + 8, area.Right - w - 8));
+        // 右侧与底部均保留 8 个物理像素，不随时钟点击位置变化。
+        int x = area.Right - w - 8;
         int y = point.Y <= area.Top ? area.Top + 8 : area.Bottom - height - 8;
         SetWindowPos(new WindowInteropHelper(this).Handle, 0, x, y, w, height, 0x0014);
     }
