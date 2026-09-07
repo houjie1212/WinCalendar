@@ -142,16 +142,23 @@ public sealed class MainWindow : Window
         if (next.Year is < 1901 or > 2100) return;
         month = next; selected = month; Render(); await RefreshData(false);
     }
+    // 仅月历区域接管滚轮，日程列表继续使用自身滚动行为。
+    private void CalendarMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Delta == 0) return;
+        e.Handled = true;
+        MoveMonth(e.Delta > 0 ? -1 : 1);
+    }
     private void Render()
     {
         var layout = new DockPanel { Margin = new Thickness(20, 16, 20, 12), LastChildFill = true };
         var top = new StackPanel(); DockPanel.SetDock(top, Dock.Top); layout.Children.Add(top);
-        var title = new DockPanel { Margin = new Thickness(0, 0, 0, 12) };
+        var title = new DockPanel { Margin = new Thickness(0, 0, 0, 12), LastChildFill = false };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
         buttons.Children.Add(Ui.Button("⚙", "Settings", OpenSettings));
         buttons.Children.Add(Ui.Button("×", "Close", Hide));
         DockPanel.SetDock(buttons, Dock.Right); title.Children.Add(buttons);
-        title.Children.Add(Ui.Text("WinCalendar", 21, true)); top.Children.Add(title);
+        top.Children.Add(title);
         top.Children.Add(Ui.Text(L.T("LocalTime"), 12));
         var nav = new DockPanel { Margin = new Thickness(0, 16, 0, 12) };
         var navButtons = new StackPanel { Orientation = Orientation.Horizontal };
@@ -164,7 +171,11 @@ public sealed class MainWindow : Window
         int first = settings.FirstDay ?? (int)L.Format.DateTimeFormat.FirstDayOfWeek;
         for (int i = 0; i < 7; i++) weekdays.Children.Add(new TextBlock { Text = L.Format.DateTimeFormat.GetShortestDayName((DayOfWeek)((first + i) % 7)), HorizontalAlignment = HorizontalAlignment.Center, FontSize = 12, Margin = new Thickness(0, 4, 0, 4) });
         top.Children.Add(weekdays);
-        var grid = new UniformGrid { Columns = 7, Rows = 6 };
+        var grid = new UniformGrid { Columns = 7, Rows = 6, Background = Brushes.Transparent };
+        grid.PreviewMouseWheel += CalendarMouseWheel;
+        weekdays.PreviewMouseWheel += CalendarMouseWheel;
+        nav.PreviewMouseWheel += CalendarMouseWheel;
+        weekdays.Background = nav.Background = Brushes.Transparent;
         var begin = GridStart(month, (DayOfWeek)first);
         for (int i = 0; i < 42; i++)
         {
