@@ -399,9 +399,21 @@ public static class Ui
         border.SetBinding(Border.PaddingProperty, new System.Windows.Data.Binding("Padding") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
         var presenter = new FrameworkElementFactory(typeof(ContentPresenter)); presenter.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
         presenter.SetBinding(ContentPresenter.HorizontalAlignmentProperty, new System.Windows.Data.Binding("HorizontalContentAlignment") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent }); border.AppendChild(presenter);
-        button.Setters.Add(new Setter(Control.TemplateProperty, new ControlTemplate(typeof(Button)) { VisualTree = border }));
+        // 焦点框覆盖在内容上，透明度变化不改变边框厚度或布局尺寸。
+        var visual = new FrameworkElementFactory(typeof(Grid)); visual.AppendChild(border);
+        var focusBorder = new FrameworkElementFactory(typeof(Border), "ButtonFocusBorder");
+        focusBorder.SetValue(Border.CornerRadiusProperty, new CornerRadius(5));
+        focusBorder.SetValue(Border.BorderBrushProperty, Brushes.DodgerBlue);
+        focusBorder.SetValue(Border.BorderThicknessProperty, new Thickness(2));
+        focusBorder.SetValue(UIElement.OpacityProperty, 0d);
+        focusBorder.SetValue(UIElement.IsHitTestVisibleProperty, false);
+        visual.AppendChild(focusBorder);
+        var template = new ControlTemplate(typeof(Button)) { VisualTree = visual };
+        var focus = new Trigger { Property = UIElement.IsKeyboardFocusedProperty, Value = true };
+        focus.Setters.Add(new Setter(UIElement.OpacityProperty, 1d, "ButtonFocusBorder"));
+        template.Triggers.Add(focus);
+        button.Setters.Add(new Setter(Control.TemplateProperty, template));
         var hover = new Trigger { Property = System.Windows.UIElement.IsMouseOverProperty, Value = true }; hover.Setters.Add(new Setter(UIElement.OpacityProperty, .8)); button.Triggers.Add(hover);
-        var focus = new Trigger { Property = System.Windows.UIElement.IsKeyboardFocusedProperty, Value = true }; focus.Setters.Add(new Setter(Control.BorderBrushProperty, Brushes.DodgerBlue)); focus.Setters.Add(new Setter(Control.BorderThicknessProperty, new Thickness(2))); button.Triggers.Add(focus);
         w.Resources[typeof(Button)] = button;
         // 年月控件与按钮共用配色，动态资源同步更新已展开的列表。
         w.Resources["MonthPickerBackground"] = Brush(dark ? "#2C2C2C" : "#EEF1F5");

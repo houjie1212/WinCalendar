@@ -331,6 +331,30 @@ try
             Call("ChangeMonth", new DateTime(2100, 12, 1)); Call("MoveMonth", 1);
             Check((DateTime)Field("month") == new DateTime(2100, 12, 1), "年份上限不越界");
             Check((DateTime)Field("selected") == chosen, "年月切换保留选中日期");
+            // 模拟焦点装饰显示前后，检查头部尺寸及后续内容的位置不变。
+            foreach (bool dark in new[] { false, true })
+            foreach (var label in new[] { "‹", L.T("Today"), "›" })
+            {
+                Ui.Theme(window, dark);
+                var host = new System.Windows.Controls.StackPanel { Resources = window.Resources };
+                var button = Ui.Button(label, "Today", () => { });
+                var below = new System.Windows.Controls.Border { Height = 20 };
+                host.Children.Add(button); host.Children.Add(below);
+                void Layout()
+                {
+                    host.Measure(new System.Windows.Size(400, 200));
+                    host.Arrange(new System.Windows.Rect(0, 0, 400, 200)); host.UpdateLayout();
+                }
+                Layout();
+                var beforeSize = button.DesiredSize;
+                var beforePosition = below.TransformToAncestor(host).Transform(new System.Windows.Point());
+                var decoration = (System.Windows.Controls.Border)button.Template.FindName("ButtonFocusBorder", button);
+                var focusTrigger = button.Template.Triggers.OfType<System.Windows.Trigger>().Single(t => t.Property == System.Windows.UIElement.IsKeyboardFocusedProperty);
+                Check(focusTrigger.Setters.OfType<System.Windows.Setter>().All(s => s.TargetName == "ButtonFocusBorder" && s.Property == System.Windows.UIElement.OpacityProperty), "焦点只改变覆盖层 " + label + dark);
+                decoration.Opacity = 1; Layout();
+                Check(button.DesiredSize == beforeSize && below.TransformToAncestor(host).Transform(new System.Windows.Point()) == beforePosition && button.BorderThickness == new System.Windows.Thickness(0) && button.Focusable,
+                    "按钮焦点前后尺寸和内容位置稳定 " + label + dark);
+            }
             window.Cleanup();
         }
         catch (Exception e) { pickerFailure = e; }
