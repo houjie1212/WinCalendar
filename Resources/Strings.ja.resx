@@ -357,4 +357,58 @@
   <data name="VersionFormat" xml:space="preserve">
     <value>バージョン {0}</value>
   </data>
+  <data name="CommonSubscriptions" xml:space="preserve">
+    <value>よく使う購読</value>
+  </data>
+  <data name="PresetChina" xml:space="preserve">
+    <value>中国の祝日</value>
+  </data>
+  <data name="PresetJapan" xml:space="preserve">
+    <value>日本の祝日</value>
+  </data>
+  <data name="PresetUsa" xml:space="preserve">
+    <value>米国の連邦祝日</value>
+  </data>
+  <data name="DuplicateSubscription" xml:space="preserve">
+    <value>この購読 URL は登録済みです。既存の購読を編集してください。</value>
+  </data>
+  <data name="SubscriptionSource" xml:space="preserve">
+    <value>購読元</value>
+  </data>
+  <data name="SourceCountry" xml:space="preserve">
+    <value>タイトルに国名を含める</value>
+  </data>
+  <data name="SourceClean" xml:space="preserve">
+    <value>タイトルの国名を省略</value>
+  </data>
+  <data name="SourceAll" xml:space="preserve">
+    <value>祝日以外の記念日も含める</value>
+  </data>
+  <data name="CustomSource" xml:space="preserve">
+    <value>カスタム URL</value>
+  </data>
+  <data name="DefaultSource" xml:space="preserve">
+    <value>既定の購読元</value>
+  </data>
+  <data name="SourceChinaAll" xml:space="preserve">
+    <value>休日と振替出勤日</value>
+  </data>
+  <data name="SourceChinaOff" xml:space="preserve">
+    <value>休日のみ</value>
+  </data>
+  <data name="SourceChinaWork" xml:space="preserve">
+    <value>振替出勤日のみ</value>
+  </data>
+  <data name="SourceUsFederal" xml:space="preserve">
+    <value>連邦祝日のみ</value>
+  </data>
+  <data name="SourceUsGeneral" xml:space="preserve">
+    <value>祝日・地域の休日（国名あり）</value>
+  </data>
+  <data name="SourceUsClean" xml:space="preserve">
+    <value>祝日・地域の休日（国名なし）</value>
+  </data>
+  <data name="SourceUsAll" xml:space="preserve">
+    <value>祝日・地域の休日・記念日</value>
+  </data>
 </root>

@@ -26,6 +26,36 @@ public sealed class Subscription
     public DateTimeOffset? LastSuccess { get; set; }
     [JsonIgnore] public bool Failed { get; set; }
 }
+// 常用订阅仅提供编辑初始值，不自动修改用户订阅列表。
+public sealed record SubscriptionOption(string NameKey, string Url);
+public sealed record SubscriptionPreset(string NameKey, string Url, string Color, SubscriptionKind Kind, SubscriptionOption[]? Alternatives = null)
+{
+    public IReadOnlyList<SubscriptionOption> Options => Alternatives ?? new[] { new SubscriptionOption("DefaultSource", Url) };
+    public bool Matches(string url) => Options.Any(option => Download.SameUrl(option.Url, url));
+    public Subscription Create() => new() { Name = L.T(NameKey), Url = Url, Color = Color, Kind = Kind };
+    public static readonly IReadOnlyList<SubscriptionPreset> All = Array.AsReadOnly(new[]
+    {
+        new SubscriptionPreset("PresetChina", "https://raw.githubusercontent.com/lanceliao/china-holiday-calender/master/holidayCal.ics", "#2563EB", SubscriptionKind.ChinaHolidays, new[]
+        {
+            new SubscriptionOption("SourceChinaAll", "https://raw.githubusercontent.com/lanceliao/china-holiday-calender/master/holidayCal.ics"),
+            new SubscriptionOption("SourceChinaOff", "https://raw.githubusercontent.com/lanceliao/china-holiday-calender/master/holidayCal-HO.ics"),
+            new SubscriptionOption("SourceChinaWork", "https://raw.githubusercontent.com/lanceliao/china-holiday-calender/master/holidayCal-CO.ics")
+        }),
+        new SubscriptionPreset("PresetJapan", "https://www.officeholidays.com/ics/japan", "#DC2626", SubscriptionKind.Ordinary, new[]
+        {
+            new SubscriptionOption("SourceCountry", "https://www.officeholidays.com/ics/japan"),
+            new SubscriptionOption("SourceClean", "https://www.officeholidays.com/ics-clean/japan"),
+            new SubscriptionOption("SourceAll", "https://www.officeholidays.com/ics-all/japan")
+        }),
+        new SubscriptionPreset("PresetUsa", "https://www.officeholidays.com/ics-fed/usa", "#8B5CF6", SubscriptionKind.Ordinary, new[]
+        {
+            new SubscriptionOption("SourceUsFederal", "https://www.officeholidays.com/ics-fed/usa"),
+            new SubscriptionOption("SourceUsGeneral", "https://www.officeholidays.com/ics/usa"),
+            new SubscriptionOption("SourceUsClean", "https://www.officeholidays.com/ics-clean/usa"),
+            new SubscriptionOption("SourceUsAll", "https://www.officeholidays.com/ics-all/usa")
+        })
+    });
+}
 public sealed class Settings
 {
     public List<Subscription> Sources { get; set; } = new();
@@ -70,6 +100,12 @@ public static class Download
         if (value.StartsWith("webcal://", StringComparison.OrdinalIgnoreCase)) value = "https://" + value[9..];
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != "https" || !string.IsNullOrEmpty(uri.UserInfo)) throw new ArgumentException("InvalidUrl");
         return uri;
+    }
+    // 主机及协议由 Uri 标准化；路径、令牌等查询参数保持区分大小写。
+    public static bool SameUrl(string left, string right)
+    {
+        try { return string.Equals(Validate(left).AbsoluteUri, Validate(right).AbsoluteUri, StringComparison.Ordinal); }
+        catch (ArgumentException) { return false; }
     }
     public static async Task<string> Text(Uri uri, CancellationToken ct = default)
     {

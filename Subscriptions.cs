@@ -109,6 +109,12 @@ public sealed class Subscriptions
     public bool Busy { get; private set; }
     public Subscriptions(Settings settings) { this.settings = settings; }
     public IEnumerable<AgendaEvent> ForDay(DateTime date) => Events.Where(x => settings.Sources.Any(s => s.Enabled && s.Id == x.SourceId && (x.On(date) || s.Kind == SubscriptionKind.ChinaHolidays && x.HolidayOn(date)))).OrderByDescending(x => x.AllDay).ThenBy(x => x.Start);
+    // 按配置顺序返回当天来源，每个订阅仅出现一次。
+    public Subscription[] SourcesForDay(DateTime date)
+    {
+        var ids = ForDay(date).Select(e => e.SourceId).ToHashSet();
+        return settings.Sources.Where(s => s.Enabled && ids.Contains(s.Id)).ToArray();
+    }
     public HolidayDisplay HolidayForDay(DateTime date)
     {
         var items = settings.Sources.Where(s => s.Enabled && s.Kind == SubscriptionKind.ChinaHolidays)

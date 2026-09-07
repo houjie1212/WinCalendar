@@ -4,6 +4,16 @@ PASS 网络失败保留缓存
 PASS 公开 HTTPS ICS 下载与解析
 PASS 真实订阅休班标识与子进程序列化
 PASS 连续刷新不重复
+PASS 公开预置解析 PresetChina/SourceChinaAll
+PASS 公开预置解析 PresetChina/SourceChinaOff
+PASS 公开预置解析 PresetChina/SourceChinaWork
+PASS 公开预置解析 PresetJapan/SourceCountry
+PASS 公开预置解析 PresetJapan/SourceClean
+PASS 公开预置解析 PresetJapan/SourceAll
+PASS 公开预置解析 PresetUsa/SourceUsFederal
+PASS 公开预置解析 PresetUsa/SourceUsGeneral
+PASS 公开预置解析 PresetUsa/SourceUsClean
+PASS 公开预置解析 PresetUsa/SourceUsAll
 PASS 非法订阅更新保留旧缓存
 PASS 非法 ICS 子进程正常退出
 PASS 极端重复规则受限且不阻塞主进程

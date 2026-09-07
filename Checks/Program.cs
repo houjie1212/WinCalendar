@@ -121,6 +121,39 @@ try
     var lightTint = Ui.SubscriptionBackground("#2563EB", new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 249, 251))).Color;
     var darkTint = Ui.SubscriptionBackground("#2563EB", new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(32, 32, 32))).Color;
     Check(lightTint.B > lightTint.R && lightTint.R > 180 && darkTint.B > darkTint.R && darkTint.B < 100, "订阅背景保留蓝色且适配深浅主题");
+    Check(SubscriptionPreset.All.Count == 3 && new Settings().Sources.Count == 0, "常用订阅不自动添加");
+    var chinaPreset = SubscriptionPreset.All[0].Create();
+    Check(chinaPreset.Kind == SubscriptionKind.ChinaHolidays && chinaPreset.Color == "#2563EB" && chinaPreset.Name == L.T("PresetChina"), "中国预置字段");
+    Check(SubscriptionPreset.All[1].Create().Kind == SubscriptionKind.Ordinary && SubscriptionPreset.All[1].Color == "#DC2626" && SubscriptionPreset.All[2].Color == "#8B5CF6", "日美预置类型与颜色");
+    chinaPreset.Name = "用户名称";
+    Check(SubscriptionPreset.All[0].Create().Name != chinaPreset.Name, "预填副本独立");
+    Check(Download.SameUrl("webcal://EXAMPLE.COM:443/a.ics?Token=A", "https://example.com/a.ics?Token=A"), "标准化订阅地址比较");
+    Check(!Download.SameUrl("https://example.com/A.ics", "https://example.com/a.ics") && !Download.SameUrl("https://example.com/a?Token=A", "https://example.com/a?Token=a"), "路径和令牌大小写不同不合并");
+    Check(!Download.SameUrl("invalid", SubscriptionPreset.All[0].Url), "损坏旧链接不阻止使用预置");
+    var japanOptions = SubscriptionPreset.All[1];
+    Check(japanOptions.Options.Count == 3 && japanOptions.Options[0].Url == japanOptions.Url, "日本三个来源及默认地址");
+    Check(japanOptions.Options.All(option => japanOptions.Matches(option.Url)) && japanOptions.Matches("webcal://www.officeholidays.com/ics-clean/japan"), "已有日本来源均可识别");
+    Check(!japanOptions.Matches("https://example.com/custom.ics") && SubscriptionPreset.All.All(p => p.Options.Count > 1), "所有常用订阅支持多来源且自定义地址不误匹配");
+    Check(SubscriptionPreset.All[0].Options.Count == 3 && SubscriptionPreset.All[2].Options.Count == 4, "中国与美国备选来源完整");
+    Check(SubscriptionPreset.All.All(p => p.Options.All(o => p.Matches(o.Url))), "所有常用来源支持再次编辑识别");
+    var baseBrush = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 249, 251));
+    Check(ReferenceEquals(Ui.SubscriptionBackground(Array.Empty<string>(), baseBrush), baseBrush), "无订阅沿用底色");
+    Check(Ui.SubscriptionBackground(new[] { "#2563EB" }, baseBrush) is System.Windows.Media.SolidColorBrush, "单订阅纯色背景");
+    foreach (int count in new[] { 2, 3, 4, 8 })
+    {
+        var colors = Enumerable.Range(0, count).Select(i => i % 2 == 0 ? "#2563EB" : "#DC2626").ToArray();
+        var brush = (System.Windows.Media.LinearGradientBrush)Ui.SubscriptionBackground(colors, baseBrush);
+        Check(brush.GradientStops.Count == 2 * Math.Min(count, 3) && Enumerable.Range(0, Math.Min(count, 3)).All(i => brush.GradientStops[2 * i].Offset == (double)i / Math.Min(count, 3) && brush.GradientStops[2 * i + 1].Offset == (double)(i + 1) / Math.Min(count, 3) && brush.GradientStops[2 * i].Color == Ui.SubscriptionBackground(colors[i], baseBrush).Color), "最多三个等宽分区与颜色顺序 " + count);
+    }
+    sources.Sources.Add(subscriptionB); sources.Sources.Add(subscriptionA);
+    calendar.Events.Add(off with { Id = "same-source-another-event" });
+    Check(calendar.SourcesForDay(date).Select(x => x.Id).SequenceEqual(new[] { "b", "a" }), "按订阅顺序取色且同源事件去重");
+    subscriptionB.Color = subscriptionA.Color;
+    Check(calendar.SourcesForDay(date).Length == 2, "同色订阅分别保留分区");
+    subscriptionB.Enabled = false;
+    Check(calendar.SourcesForDay(date).Single().Id == "a", "停用来源移除分区");
+    sources.Sources.Clear();
+    Check(calendar.SourcesForDay(date).Length == 0, "删除来源移除分区");
     Console.WriteLine($"{passed} checks passed");
 }
 catch (Exception e) { Console.WriteLine("FAIL " + e.Message); Environment.ExitCode = 1; }

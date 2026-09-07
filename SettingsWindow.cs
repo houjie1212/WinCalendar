@@ -52,6 +52,11 @@ public sealed class SettingsWindow : Window
             body.Children.Add(Ui.Text(L.T("LastSuccess") + ": " + (source.LastSuccess?.LocalDateTime.ToString("g", L.Format) ?? L.T("Never")), 11));
         }
         body.Children.Add(Ui.Button(L.T("Add"), "Add", () => Edit(null)));
+        body.Children.Add(Ui.Text(L.T("CommonSubscriptions"), 14, true));
+        var presets = new WrapPanel();
+        foreach (var preset in SubscriptionPreset.All)
+            presets.Children.Add(Ui.Button(L.T(preset.NameKey), preset.NameKey, () => Edit(draft.Sources.FirstOrDefault(source => preset.Matches(source.Url)), preset)));
+        body.Children.Add(presets);
         body.Children.Add(new Separator { Margin = new Thickness(0, 15, 0, 10) });
         body.Children.Add(Ui.Text(L.T("RefreshMinutes")));
         var refresh = new ComboBox { ItemsSource = new[] { 5, 15, 30, 60, 180, 1440, draft.RefreshMinutes }.Distinct().Order().ToArray(), SelectedItem = draft.RefreshMinutes, Margin = new Thickness(0, 4, 0, 12) };
@@ -103,25 +108,56 @@ public sealed class SettingsWindow : Window
         }
         catch { MessageBox.Show(this, L.T("SaveFailed"), "WinCalendar"); return false; }
     }
-    private void Edit(Subscription? original)
+    private void Edit(Subscription? original, SubscriptionPreset? preset = null)
     {
+        preset ??= SubscriptionPreset.All.FirstOrDefault(item => original != null && item.Matches(original.Url));
+        var initial = original ?? preset?.Create();
         var w = Ui.Dialog(this, original == null ? "Add" : "Edit");
         var panel = new StackPanel { Margin = new Thickness(20) };
-        var name = new TextBox { Text = original?.Name ?? "", Margin = new Thickness(0, 4, 0, 12) };
-        var url = new TextBox { Text = original?.Url ?? "", Margin = new Thickness(0, 4, 0, 12), TextWrapping = TextWrapping.Wrap, MaxHeight = 110, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var name = new TextBox { Text = initial?.Name ?? "", Margin = new Thickness(0, 4, 0, 12) };
+        var url = new TextBox { Text = initial?.Url ?? "", Margin = new Thickness(0, 4, 0, 12), TextWrapping = TextWrapping.Wrap, MaxHeight = 110, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         AutomationProperties.SetName(name, L.T("Name")); AutomationProperties.SetName(url, L.T("Url"));
         panel.Children.Add(Ui.Label("Name")); panel.Children.Add(name);
+        // 用户主动选择自定义时清空地址；初始化及语言刷新不清空已有内容。
+        var options = preset?.Options.ToArray() ?? Array.Empty<SubscriptionOption>();
+        var sourceChoice = new ComboBox { Margin = new Thickness(0, 4, 0, 12) };
+        bool syncingSource = false;
+        void UpdateSourceChoice()
+        {
+            syncingSource = true;
+            try
+            {
+                sourceChoice.ItemsSource = options.Select(option => L.T(option.NameKey)).Append(L.T("CustomSource")).ToArray();
+                int selectedOption = Array.FindIndex(options, option => Download.SameUrl(option.Url, url.Text));
+                sourceChoice.SelectedIndex = selectedOption < 0 ? options.Length : selectedOption;
+                AutomationProperties.SetName(sourceChoice, L.T("SubscriptionSource"));
+            }
+            finally { syncingSource = false; }
+        }
+        sourceChoice.SelectionChanged += (_, _) =>
+        {
+            if (syncingSource || sourceChoice.SelectedIndex < 0) return;
+            if (sourceChoice.SelectedIndex < options.Length) url.Text = options[sourceChoice.SelectedIndex].Url;
+            else { url.Clear(); url.Focus(); }
+        };
+        if (options.Length > 0)
+        {
+            panel.Children.Add(Ui.Label("SubscriptionSource")); panel.Children.Add(sourceChoice);
+            url.TextChanged += (_, _) => UpdateSourceChoice();
+            UpdateSourceChoice();
+        }
         panel.Children.Add(Ui.Label("Url")); panel.Children.Add(url);
-        var kind = new ComboBox { ItemsSource = new[] { L.T("OrdinaryCalendar"), L.T("ChinaHolidays") }, SelectedIndex = original?.Kind == SubscriptionKind.ChinaHolidays ? 1 : 0, Margin = new Thickness(0, 4, 0, 12) };
+        var kind = new ComboBox { ItemsSource = new[] { L.T("OrdinaryCalendar"), L.T("ChinaHolidays") }, SelectedIndex = initial?.Kind == SubscriptionKind.ChinaHolidays ? 1 : 0, Margin = new Thickness(0, 4, 0, 12) };
         AutomationProperties.SetName(kind, L.T("SubscriptionType")); panel.Children.Add(Ui.Label("SubscriptionType")); panel.Children.Add(kind);
         var colors = new[] { "#2563EB", "#16834A", "#C95D12", "#8B5CF6", "#DB2777", "#DC2626" };
-        var color = new ComboBox { ItemsSource = new[] { "Blue", "Green", "Orange", "Purple", "Pink", "Red" }.Select(L.T).ToArray(), SelectedIndex = Math.Max(0, Array.IndexOf(colors, original?.Color ?? colors[0])), Margin = new Thickness(0, 4, 0, 16) };
+        var color = new ComboBox { ItemsSource = new[] { "Blue", "Green", "Orange", "Purple", "Pink", "Red" }.Select(L.T).ToArray(), SelectedIndex = Math.Max(0, Array.IndexOf(colors, initial?.Color ?? colors[0])), Margin = new Thickness(0, 4, 0, 16) };
         AutomationProperties.SetName(color, L.T("Color")); panel.Children.Add(Ui.Label("Color")); panel.Children.Add(color);
         var error = Ui.Text("", 12); error.Foreground = System.Windows.Media.Brushes.IndianRed; panel.Children.Add(error);
         panel.Children.Add(Ui.Button(L.T("Save"), "Save", () =>
         {
             if (string.IsNullOrWhiteSpace(name.Text)) { error.Text = L.T("InvalidName"); return; }
             Uri uri; try { uri = Download.Validate(url.Text); } catch { error.Text = L.T("InvalidUrl"); return; }
+            if (draft.Sources.Any(other => other != original && Download.SameUrl(other.Url, uri.AbsoluteUri))) { error.Text = L.T("DuplicateSubscription"); return; }
             var source = original ?? new Subscription();
             // 更换链接使用新缓存键，失败时不会误显示旧链接的日程。
             if (source.Url != uri.AbsoluteUri) { source.Id = Guid.NewGuid().ToString("N"); source.LastSuccess = null; }
@@ -132,6 +168,7 @@ public sealed class SettingsWindow : Window
         }));
         void Translate()
         {
+            if (options.Length > 0) UpdateSourceChoice();
             var selectedKind = kind.SelectedIndex;
             kind.ItemsSource = new[] { L.T("OrdinaryCalendar"), L.T("ChinaHolidays") }; kind.SelectedIndex = selectedKind;
             AutomationProperties.SetName(kind, L.T("SubscriptionType"));

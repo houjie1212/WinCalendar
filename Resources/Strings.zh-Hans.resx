@@ -357,4 +357,58 @@
   <data name="VersionFormat" xml:space="preserve">
     <value>版本 {0}</value>
   </data>
+  <data name="CommonSubscriptions" xml:space="preserve">
+    <value>常用订阅</value>
+  </data>
+  <data name="PresetChina" xml:space="preserve">
+    <value>中国节假日</value>
+  </data>
+  <data name="PresetJapan" xml:space="preserve">
+    <value>日本假日</value>
+  </data>
+  <data name="PresetUsa" xml:space="preserve">
+    <value>美国联邦假日</value>
+  </data>
+  <data name="DuplicateSubscription" xml:space="preserve">
+    <value>该订阅地址已存在，请编辑已有订阅。</value>
+  </data>
+  <data name="SubscriptionSource" xml:space="preserve">
+    <value>订阅来源</value>
+  </data>
+  <data name="SourceCountry" xml:space="preserve">
+    <value>标题包含国家名称</value>
+  </data>
+  <data name="SourceClean" xml:space="preserve">
+    <value>标题隐藏国家名称</value>
+  </data>
+  <data name="SourceAll" xml:space="preserve">
+    <value>包含非公共假日</value>
+  </data>
+  <data name="CustomSource" xml:space="preserve">
+    <value>自定义地址</value>
+  </data>
+  <data name="DefaultSource" xml:space="preserve">
+    <value>默认来源</value>
+  </data>
+  <data name="SourceChinaAll" xml:space="preserve">
+    <value>放假及补班</value>
+  </data>
+  <data name="SourceChinaOff" xml:space="preserve">
+    <value>仅放假</value>
+  </data>
+  <data name="SourceChinaWork" xml:space="preserve">
+    <value>仅补班</value>
+  </data>
+  <data name="SourceUsFederal" xml:space="preserve">
+    <value>仅联邦假日</value>
+  </data>
+  <data name="SourceUsGeneral" xml:space="preserve">
+    <value>公共及地区假日（含国家名称）</value>
+  </data>
+  <data name="SourceUsClean" xml:space="preserve">
+    <value>公共及地区假日（隐藏国家名称）</value>
+  </data>
+  <data name="SourceUsAll" xml:space="preserve">
+    <value>公共、地区及非公共假日</value>
+  </data>
 </root>

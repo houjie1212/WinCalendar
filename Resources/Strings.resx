@@ -357,4 +357,58 @@
   <data name="VersionFormat" xml:space="preserve">
     <value>Version {0}</value>
   </data>
+  <data name="CommonSubscriptions" xml:space="preserve">
+    <value>Common subscriptions</value>
+  </data>
+  <data name="PresetChina" xml:space="preserve">
+    <value>China holidays</value>
+  </data>
+  <data name="PresetJapan" xml:space="preserve">
+    <value>Japan holidays</value>
+  </data>
+  <data name="PresetUsa" xml:space="preserve">
+    <value>US federal holidays</value>
+  </data>
+  <data name="DuplicateSubscription" xml:space="preserve">
+    <value>This subscription URL already exists. Edit the existing subscription instead.</value>
+  </data>
+  <data name="SubscriptionSource" xml:space="preserve">
+    <value>Subscription source</value>
+  </data>
+  <data name="SourceCountry" xml:space="preserve">
+    <value>Include country in titles</value>
+  </data>
+  <data name="SourceClean" xml:space="preserve">
+    <value>Hide country in titles</value>
+  </data>
+  <data name="SourceAll" xml:space="preserve">
+    <value>Include non-public holidays</value>
+  </data>
+  <data name="CustomSource" xml:space="preserve">
+    <value>Custom URL</value>
+  </data>
+  <data name="DefaultSource" xml:space="preserve">
+    <value>Default source</value>
+  </data>
+  <data name="SourceChinaAll" xml:space="preserve">
+    <value>Holidays and make-up workdays</value>
+  </data>
+  <data name="SourceChinaOff" xml:space="preserve">
+    <value>Holidays only</value>
+  </data>
+  <data name="SourceChinaWork" xml:space="preserve">
+    <value>Make-up workdays only</value>
+  </data>
+  <data name="SourceUsFederal" xml:space="preserve">
+    <value>Federal holidays only</value>
+  </data>
+  <data name="SourceUsGeneral" xml:space="preserve">
+    <value>Public and regional holidays (country in titles)</value>
+  </data>
+  <data name="SourceUsClean" xml:space="preserve">
+    <value>Public and regional holidays (no country in titles)</value>
+  </data>
+  <data name="SourceUsAll" xml:space="preserve">
+    <value>Public, regional and non-public holidays</value>
+  </data>
 </root>

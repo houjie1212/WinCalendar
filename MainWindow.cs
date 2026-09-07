@@ -149,6 +149,12 @@ public sealed class MainWindow : Window
         e.Handled = true;
         MoveMonth(e.Delta > 0 ? -1 : 1);
     }
+    // 供离屏布局检查使用，不读取订阅缓存或发起网络请求。
+    internal void RenderPreviewEvents(AgendaEvent[] events)
+    {
+        if (!preview) throw new InvalidOperationException();
+        subscriptions.Events.Clear(); subscriptions.Events.AddRange(events); Render();
+    }
     private void Render()
     {
         var layout = new DockPanel { Margin = new Thickness(20, 16, 20, 12), LastChildFill = true };
@@ -195,17 +201,17 @@ public sealed class MainWindow : Window
                 cell.Children.Add(badge);
             }
             var b = new Button { Content = cell, Padding = new Thickness(0), Margin = new Thickness(1), HorizontalContentAlignment = HorizontalAlignment.Stretch, BorderThickness = new Thickness(date == DateTime.Today ? 1 : 0), BorderBrush = Ui.Brush("#3B82F6"), Opacity = date.Month == month.Month ? 1 : .55 };
-            // 多源同日按订阅列表顺序取色；与主题底色混合，保留日期文字对比度。
-            var daySources = subscriptions.ForDay(date).Select(e => e.SourceId).ToHashSet();
-            var source = settings.Sources.FirstOrDefault(s => s.Enabled && daySources.Contains(s.Id));
-            if (source != null)
+            // 来源按设置顺序等宽分色，选中状态只改变边框。
+            var daySources = subscriptions.SourcesForDay(date);
+            if (daySources.Length > 0)
             {
-                b.Background = Ui.SubscriptionBackground(source.Color, (SolidColorBrush)Background);
+                b.Background = Ui.SubscriptionBackground(daySources.Select(source => source.Color).ToArray(), (SolidColorBrush)Background);
                 number.Foreground = Foreground;
                 if (date == selected) { b.BorderThickness = new Thickness(2); b.BorderBrush = Foreground; }
             }
             else if (date == selected) { b.Background = Ui.Brush("#285AA8"); b.Foreground = Brushes.White; number.Foreground = Brushes.White; }
             var accessible = date.ToString("D", L.Format) + " · " + string.Join(" · ", holiday.Names.Select(L.Festival));
+            if (daySources.Length > 0) accessible += " · " + L.T("Subscriptions") + ": " + string.Join(" · ", daySources.Select(source => source.Name));
             if (lunar.Length > 0) accessible += " · " + L.T("ChineseLunar") + " " + lunar;
             if (holiday.Conflict) accessible += " · " + L.T("HolidayConflict");
             else if (holiday.IsOffDay.HasValue) accessible += " · " + L.T(holiday.IsOffDay.Value ? "OffFull" : "WorkFull");
@@ -279,6 +285,23 @@ public static class Ui
         var baseColor = background.Color;
         byte Blend(byte value, byte basis) => (byte)Math.Round(value * .28 + basis * .72);
         return new SolidColorBrush(Color.FromRgb(Blend(tint.R, baseColor.R), Blend(tint.G, baseColor.G), Blend(tint.B, baseColor.B)));
+    }
+    // 相邻分区在同一偏移处放置两个色点，边界清晰且不混成渐变色。
+    public static Brush SubscriptionBackground(string[] colors, SolidColorBrush background)
+    {
+        // 仅限制背景分区数量，提示与详情继续使用全部订阅。
+        colors = colors.Take(3).ToArray();
+        if (colors.Length == 0) return background;
+        if (colors.Length == 1) return SubscriptionBackground(colors[0], background);
+        var brush = new LinearGradientBrush { StartPoint = new Point(0, .5), EndPoint = new Point(1, .5) };
+        for (int i = 0; i < colors.Length; i++)
+        {
+            var color = SubscriptionBackground(colors[i], background).Color;
+            brush.GradientStops.Add(new GradientStop(color, (double)i / colors.Length));
+            brush.GradientStops.Add(new GradientStop(color, (double)(i + 1) / colors.Length));
+        }
+        brush.Freeze();
+        return brush;
     }
     public static TextBlock Text(string text, double size = 14, bool bold = false) => new() { Text = text, FontSize = size, FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 2, 0, 2) };
     public static TextBlock Label(string key) { var t = Text(L.T(key)); t.Tag = new ResourceTag(key, true); return t; }
