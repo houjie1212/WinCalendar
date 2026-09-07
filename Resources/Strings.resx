@@ -411,4 +411,67 @@
   <data name="SourceUsAll" xml:space="preserve">
     <value>Public, regional and non-public holidays</value>
   </data>
+  <data name="CheckUpdate" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="UpdateChecking" xml:space="preserve">
+    <value>Checking for updates…</value>
+  </data>
+  <data name="UpdateNotes" xml:space="preserve">
+    <value>Release notes</value>
+  </data>
+  <data name="UpdateInstall" xml:space="preserve">
+    <value>Update and restart</value>
+  </data>
+  <data name="UpdateDownloading" xml:space="preserve">
+    <value>Downloading and verifying update…</value>
+  </data>
+  <data name="UpdateInstalling" xml:space="preserve">
+    <value>Preparing to restart…</value>
+  </data>
+  <data name="UpdateAvailable" xml:space="preserve">
+    <value>Current: {0}   New: {1}</value>
+  </data>
+  <data name="UpdateNoRelease" xml:space="preserve">
+    <value>No public stable release is available.</value>
+  </data>
+  <data name="UpdateLatest" xml:space="preserve">
+    <value>You are up to date.</value>
+  </data>
+  <data name="UpdateCheckFailed" xml:space="preserve">
+    <value>Unable to check for updates. Please try again later.</value>
+  </data>
+  <data name="UpdateRateLimit" xml:space="preserve">
+    <value>GitHub request limit reached. Please try again later.</value>
+  </data>
+  <data name="UpdateMissingPackage" xml:space="preserve">
+    <value>The release is missing a valid update package or checksum file.</value>
+  </data>
+  <data name="UpdateInvalidVersion" xml:space="preserve">
+    <value>The release or package version could not be verified.</value>
+  </data>
+  <data name="UpdateHashFailed" xml:space="preserve">
+    <value>Update checksum mismatch. The update was stopped.</value>
+  </data>
+  <data name="UpdateFailed" xml:space="preserve">
+    <value>Update failed. Existing files and settings are preserved.</value>
+  </data>
+  <data name="UpdateCannotInstall" xml:space="preserve">
+    <value>Unable to prepare the update. Check free space and folder permissions, or download manually from github.com/houjie1212/WinCalendar/releases.</value>
+  </data>
+  <data name="UpdateFileConflict" xml:space="preserve">
+    <value>An update file conflicts with an unmanaged file. Please update manually.</value>
+  </data>
+  <data name="UpdateUnsaved" xml:space="preserve">
+    <value>Save your pending settings before updating?</value>
+  </data>
+  <data name="UpdateSaveContinue" xml:space="preserve">
+    <value>Save and continue</value>
+  </data>
+  <data name="UpdateCancel" xml:space="preserve">
+    <value>Cancel update</value>
+  </data>
+  <data name="UpdateRolledBack" xml:space="preserve">
+    <value>The new version did not start successfully. The previous version has been restored.</value>
+  </data>
 </root>

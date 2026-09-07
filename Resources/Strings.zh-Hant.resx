@@ -411,4 +411,67 @@
   <data name="SourceUsAll" xml:space="preserve">
     <value>公眾、地區及非公眾假日</value>
   </data>
+  <data name="CheckUpdate" xml:space="preserve">
+    <value>檢查更新</value>
+  </data>
+  <data name="UpdateChecking" xml:space="preserve">
+    <value>正在檢查更新…</value>
+  </data>
+  <data name="UpdateNotes" xml:space="preserve">
+    <value>更新說明</value>
+  </data>
+  <data name="UpdateInstall" xml:space="preserve">
+    <value>更新並重新啟動</value>
+  </data>
+  <data name="UpdateDownloading" xml:space="preserve">
+    <value>正在下載並驗證更新…</value>
+  </data>
+  <data name="UpdateInstalling" xml:space="preserve">
+    <value>正在準備重新啟動…</value>
+  </data>
+  <data name="UpdateAvailable" xml:space="preserve">
+    <value>目前版本：{0}   新版本：{1}</value>
+  </data>
+  <data name="UpdateNoRelease" xml:space="preserve">
+    <value>暫無可用的公開正式版本。</value>
+  </data>
+  <data name="UpdateLatest" xml:space="preserve">
+    <value>目前已是最新版本。</value>
+  </data>
+  <data name="UpdateCheckFailed" xml:space="preserve">
+    <value>檢查更新失敗，請稍後重試。</value>
+  </data>
+  <data name="UpdateRateLimit" xml:space="preserve">
+    <value>GitHub 請求受限，請稍後重試。</value>
+  </data>
+  <data name="UpdateMissingPackage" xml:space="preserve">
+    <value>此版本缺少有效的更新套件或驗證檔案。</value>
+  </data>
+  <data name="UpdateInvalidVersion" xml:space="preserve">
+    <value>無法識別或核對發行版本。</value>
+  </data>
+  <data name="UpdateHashFailed" xml:space="preserve">
+    <value>更新套件驗證不一致，已停止更新。</value>
+  </data>
+  <data name="UpdateFailed" xml:space="preserve">
+    <value>更新失敗，已保留原檔案及設定。</value>
+  </data>
+  <data name="UpdateCannotInstall" xml:space="preserve">
+    <value>無法準備更新，請檢查磁碟空間及目錄權限，或從 github.com/houjie1212/WinCalendar/releases 手動下載。</value>
+  </data>
+  <data name="UpdateFileConflict" xml:space="preserve">
+    <value>更新檔案與使用者額外檔案同名，請手動更新。</value>
+  </data>
+  <data name="UpdateUnsaved" xml:space="preserve">
+    <value>更新前需要儲存尚未儲存的設定。</value>
+  </data>
+  <data name="UpdateSaveContinue" xml:space="preserve">
+    <value>儲存並繼續</value>
+  </data>
+  <data name="UpdateCancel" xml:space="preserve">
+    <value>取消更新</value>
+  </data>
+  <data name="UpdateRolledBack" xml:space="preserve">
+    <value>新版未成功啟動，已還原舊版本。</value>
+  </data>
 </root>

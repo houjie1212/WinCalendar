@@ -2,6 +2,18 @@ using System.Collections;
 using System.Globalization;
 using WinCalendar;
 
+// 子进程模拟新版启动确认，不加载真实设置或接管时钟。
+if (args.Length == 2 && args[0] == "--updated")
+{
+    Store.Root = Path.GetDirectoryName(Path.GetDirectoryName(args[1]))!;
+    if (!File.Exists(Path.Combine(AppContext.BaseDirectory, "skip-ack")))
+    {
+        UpdateInstaller.Acknowledge(args[1]);
+        Thread.Sleep(1500);
+    }
+    return;
+}
+if (args.Contains("--update-failed")) return;
 int passed = 0;
 void Check(bool value, string name) { if (!value) throw new Exception(name); passed++; Console.WriteLine("PASS " + name); }
 void Reject(Action action, string name) { try { action(); } catch { Check(true, name); return; } throw new Exception(name); }
@@ -9,6 +21,113 @@ L.Reload();
 Store.Root = Path.Combine(Path.GetTempPath(), "WinCalendarChecks-" + Guid.NewGuid().ToString("N"));
 try
 {
+    // 更新检查使用模拟 HTTP 响应，不依赖线上 Release 或用户订阅。
+    Check(UpdateService.ParseVersion("v1.10.0") > UpdateService.ParseVersion("1.9.9"), "更新版本按数字比较");
+    Reject(() => UpdateService.ParseVersion("v1.2.3-beta"), "更新拒绝预发布版本格式");
+    Reject(() => UpdateService.ParseVersion("1.2"), "更新拒绝不完整版本");
+    Check(UpdateService.AllowedUri(new Uri("https://github.com/houjie1212/WinCalendar/releases/download/v1.0.1/a.zip")) &&
+        !UpdateService.AllowedUri(new Uri("https://github.com/other/repo/releases/download/v1/a.zip")) &&
+        !UpdateService.AllowedUri(new Uri("http://github.com/houjie1212/WinCalendar/releases/download/v1/a.zip")), "更新仅接受固定仓库HTTPS资产");
+    Check(UpdateService.AllowedUri(new Uri("https://release-assets.githubusercontent.com/file?token=abc"), true) &&
+        !UpdateService.AllowedUri(new Uri("https://evil.example/file"), true), "更新重定向限制");
+    Check(UpdateService.ReadRelease("{\"draft\":false,\"prerelease\":true}") == null, "更新忽略预发布");
+    var latestJson = "{\"draft\":false,\"prerelease\":false,\"tag_name\":\"v1.0.0\"}";
+    Check(UpdateService.ReadRelease(latestJson)!.Version == UpdateService.Current, "更新同版本无需更新包");
+    Reject(() => UpdateService.ReadRelease("{\"draft\":false,\"prerelease\":false,\"tag_name\":\"v1.0.1\",\"assets\":[]}"), "更新缺失资产被拒绝");
+    foreach (var code in new[] { 404, 403, 429, 500, 200 })
+    {
+        var handler = new UpdateHttpStub(code, latestJson);
+        if (code == 404) Check(UpdateService.Check(CancellationToken.None, handler).GetAwaiter().GetResult() == null, "更新无正式发布");
+        else if (code == 200) Check(UpdateService.Check(CancellationToken.None, handler).GetAwaiter().GetResult()!.Version == UpdateService.Current, "更新HTTP成功解析");
+        else Reject(() => UpdateService.Check(CancellationToken.None, handler).GetAwaiter().GetResult(), "更新HTTP失败或限流 " + code);
+    }
+    using (var cancelledUpdate = new CancellationTokenSource())
+    {
+        cancelledUpdate.Cancel();
+        Reject(() => UpdateService.Check(cancelledUpdate.Token, new UpdateHttpStub(200, latestJson)).GetAwaiter().GetResult(), "更新检查可取消");
+    }
+    string updateTemp = Path.Combine(Store.Root, "update-tests"); Directory.CreateDirectory(updateTemp);
+    foreach (string path in new[] { "../outside", "C:/outside", "a\\b", "file:stream", "a/CON.txt", "a/../b", "a. " })
+        Reject(() => UpdateService.SafePath(updateTemp, path), "更新拒绝不安全路径 " + path);
+    var assetUri = new Uri("https://github.com/houjie1212/WinCalendar/releases/download/v1.0.1/package.zip");
+    string downloaded = Path.Combine(updateTemp, "downloaded");
+    UpdateService.DownloadAsset(assetUri, downloaded, 100, null, CancellationToken.None, new UpdateHttpStub(200, "download-body")).GetAwaiter().GetResult();
+    Check(File.ReadAllText(downloaded) == "download-body", "更新资产下载内容");
+    Reject(() => UpdateService.DownloadAsset(assetUri, downloaded + "-large", 2, null, CancellationToken.None, new UpdateHttpStub(200, "too-large")).GetAwaiter().GetResult(), "更新资产大小上限");
+    using (var cancelledDownload = new CancellationTokenSource())
+    {
+        cancelledDownload.Cancel();
+        Reject(() => UpdateService.DownloadAsset(assetUri, downloaded + "-cancel", 100, null, cancelledDownload.Token, new UpdateHttpStub(200, "body")).GetAwaiter().GetResult(), "更新下载取消");
+    }
+    string hashFile = Path.Combine(updateTemp, "package.zip"), sumFile = Path.Combine(updateTemp, "SHA256SUMS.txt");
+    File.WriteAllText(hashFile, "test");
+    File.WriteAllText(sumFile, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(hashFile))) + "  package.zip");
+    UpdateService.VerifyHash(hashFile, sumFile, "package.zip"); Check(true, "更新校验正确哈希");
+    File.AppendAllText(hashFile, "changed"); Reject(() => UpdateService.VerifyHash(hashFile, sumFile, "package.zip"), "更新校验拒绝损坏文件");
+    string malformedZip = Path.Combine(updateTemp, "unsafe.zip");
+    using (var zip = System.IO.Compression.ZipFile.Open(malformedZip, System.IO.Compression.ZipArchiveMode.Create)) zip.CreateEntry("../outside.txt");
+    Reject(() => UpdateService.Extract(malformedZip, Path.Combine(updateTemp, "unsafe"), UpdateService.Current), "更新解压拒绝路径越界");
+    string linkZip = Path.Combine(updateTemp, "link.zip");
+    using (var zip = System.IO.Compression.ZipFile.Open(linkZip, System.IO.Compression.ZipArchiveMode.Create)) zip.CreateEntry("link").ExternalAttributes = unchecked((int)0xa1ff0000);
+    Reject(() => UpdateService.Extract(linkZip, Path.Combine(updateTemp, "link"), UpdateService.Current), "更新解压拒绝符号链接");
+    string target = Path.Combine(updateTemp, "installed"), job = Path.Combine(updateTemp, "job"), payload = Path.Combine(job, "payload");
+    Directory.CreateDirectory(target); Directory.CreateDirectory(payload);
+    var managed = new[] { "WinCalendar.exe", "WinCalendar.dll", "WinCalendar.deps.json", "WinCalendar.runtimeconfig.json" };
+    foreach (string file in managed) { File.WriteAllText(Path.Combine(target, file), "old"); File.WriteAllText(Path.Combine(payload, file), "new"); }
+    File.WriteAllText(Path.Combine(target, UpdateService.ManifestName), System.Text.Json.JsonSerializer.Serialize(managed));
+    File.WriteAllText(Path.Combine(payload, UpdateService.ManifestName), System.Text.Json.JsonSerializer.Serialize(managed));
+    File.WriteAllText(Path.Combine(target, "personal.txt"), "keep");
+    var journal = UpdateInstaller.PrepareFiles(job, target);
+    UpdateInstaller.InstallFiles(job, journal);
+    Check(File.ReadAllText(Path.Combine(target, "WinCalendar.exe")) == "new" && File.ReadAllText(Path.Combine(target, "personal.txt")) == "keep", "更新替换且保留额外文件");
+    UpdateInstaller.Rollback(job, journal);
+    UpdateInstaller.Rollback(job, journal);
+    Check(File.ReadAllText(Path.Combine(target, "WinCalendar.exe")) == "old" && journal.Phase == "rolledback", "更新中断恢复可重复执行");
+    // 文件被占用时安装失败，备份及恢复记录仍可用于还原。
+    using (var locked = new FileStream(Path.Combine(target, "WinCalendar.dll"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        Reject(() => UpdateInstaller.InstallFiles(job, journal), "更新文件占用触发失败");
+    UpdateInstaller.Rollback(job, journal);
+    Check(File.ReadAllText(Path.Combine(target, "WinCalendar.exe")) == "old", "更新部分替换失败后回滚");
+
+    // 使用检查程序自身的 apphost 模拟新旧版本，运行真实更新工作流程。
+    foreach (bool failStartup in new[] { false, true })
+    {
+        string transaction = Path.Combine(UpdateService.Root, Guid.NewGuid().ToString("N"));
+        string installed = Path.Combine(updateTemp, "process-" + failStartup);
+        string incoming = Path.Combine(transaction, "payload");
+        Directory.CreateDirectory(installed); Directory.CreateDirectory(incoming);
+        foreach (string sourceFile in Directory.GetFiles(AppContext.BaseDirectory, "*", SearchOption.AllDirectories))
+        {
+            string relative = Path.GetRelativePath(AppContext.BaseDirectory, sourceFile);
+            foreach (string destination in new[] { installed, incoming })
+            {
+                var file = Path.Combine(destination, relative); Directory.CreateDirectory(Path.GetDirectoryName(file)!); File.Copy(sourceFile, file);
+            }
+        }
+        foreach (string destination in new[] { installed, incoming })
+        {
+            File.Copy(Path.Combine(destination, "Checks.exe"), Path.Combine(destination, "WinCalendar.exe"), true);
+            var listing = Directory.GetFiles(destination, "*", SearchOption.AllDirectories).Select(p => Path.GetRelativePath(destination, p).Replace('\\', '/')).ToArray();
+            File.WriteAllText(Path.Combine(destination, UpdateService.ManifestName), System.Text.Json.JsonSerializer.Serialize(listing));
+        }
+        if (!failStartup)
+        {
+            string validZip = Path.Combine(updateTemp, "valid.zip");
+            System.IO.Compression.ZipFile.CreateFromDirectory(incoming, validZip);
+            UpdateService.Extract(validZip, Path.Combine(updateTemp, "valid-extract"), UpdateService.Current);
+            Check(true, "更新完整包清单及程序集版本验证");
+            Reject(() => UpdateService.Extract(validZip, Path.Combine(updateTemp, "wrong-version"), new Version(99, 0, 0)), "更新包内版本不符");
+        }
+        if (failStartup) File.WriteAllText(Path.Combine(installed, "skip-ack"), "test");
+        var transactionJournal = UpdateInstaller.PrepareFiles(transaction, installed);
+        using var readySignal = new EventWaitHandle(false, EventResetMode.ManualReset, "Local\\WinCalendar.Update." + Path.GetFileName(transaction) + ".ready");
+        int result = UpdateInstaller.Worker(transaction, false);
+        var finished = System.Text.Json.JsonSerializer.Deserialize<UpdateJournal>(File.ReadAllText(UpdateInstaller.JournalPath(transaction)))!;
+        Check(failStartup ? result == 1 && finished.Phase == "rolledback" : result == 0 && finished.Phase == "complete", "更新工作进程启动确认与回滚 " + failStartup);
+        // 等待测试子进程退出，之后才能清理临时程序集。
+        Thread.Sleep(1800);
+    }
+
     Check(L.Match("zh-CN") == "zh-Hans" && L.Match("zh-SG") == "zh-Hans", "简中匹配");
     Check(L.Match("zh-TW") == "zh-Hant" && L.Match("zh-HK") == "zh-Hant", "繁中匹配");
     Check(L.Match("ja-JP") == "ja" && L.Match("fr-FR") == "en", "日文和英文回退");
@@ -187,3 +306,13 @@ try
 }
 catch (Exception e) { Console.WriteLine("FAIL " + e.Message); Environment.ExitCode = 1; }
 finally { if (Directory.Exists(Store.Root)) Directory.Delete(Store.Root, true); }
+
+// 固定 HTTP 响应覆盖错误路径，不建立外部测试服务。
+sealed class UpdateHttpStub(int status, string body) : System.Net.Http.HttpMessageHandler
+{
+    protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        return Task.FromResult(new System.Net.Http.HttpResponseMessage((System.Net.HttpStatusCode)status) { Content = new System.Net.Http.StringContent(body) });
+    }
+}

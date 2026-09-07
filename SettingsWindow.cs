@@ -76,12 +76,28 @@ public sealed class SettingsWindow : Window
         var version = typeof(App).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
             ?? typeof(App).Assembly.GetName().Version?.ToString() ?? "";
         var versionLabel = Ui.Text(string.Format(L.T("VersionFormat"), version), 12);
-        AutomationProperties.SetName(versionLabel, versionLabel.Text); body.Children.Add(versionLabel);
+        AutomationProperties.SetName(versionLabel, versionLabel.Text);
+        var versionRow = new WrapPanel(); versionRow.Children.Add(versionLabel);
+        versionRow.Children.Add(Ui.Button(L.T("CheckUpdate"), "CheckUpdate", () => new UpdateDialog(this, SaveBeforeUpdate, exit).ShowDialog()));
+        body.Children.Add(versionRow);
         var footer = new WrapPanel { Margin = new Thickness(0, 20, 0, 0) };
         footer.Children.Add(Ui.Button(L.T("Save"), "Save", Save));
         footer.Children.Add(Ui.Button(L.T("Refresh"), "Refresh", async () => { if (Apply()) { IsEnabled = false; try { await refreshData(); Render(); } finally { IsEnabled = true; } } }));
         footer.Children.Add(Ui.Button(L.T("Cancel"), "Cancel", () => DialogResult = false));
         footer.Children.Add(Ui.Button(L.T("Exit"), "Exit", exit)); body.Children.Add(footer);
+    }
+    // 检查版本不保存设置；确认安装时才提示处理尚未保存的修改。
+    private bool SaveBeforeUpdate()
+    {
+        bool savedStartup = Registry.GetValue(@"HKEY_CURRENT_USER\" + RunKey, "WinCalendar", null) != null;
+        if (JsonSerializer.Serialize(draft, Store.Json) == JsonSerializer.Serialize(live, Store.Json) && startup == savedStartup) return true;
+        var prompt = Ui.Dialog(this, "CheckUpdate");
+        var panel = new StackPanel { Margin = new Thickness(20) };
+        var text = Ui.Text(L.T("UpdateUnsaved")); text.TextWrapping = TextWrapping.Wrap; panel.Children.Add(text);
+        panel.Children.Add(Ui.Button(L.T("UpdateSaveContinue"), "UpdateSaveContinue", () => { if (Apply()) prompt.DialogResult = true; }));
+        panel.Children.Add(Ui.Button(L.T("UpdateCancel"), "UpdateCancel", () => prompt.DialogResult = false));
+        prompt.Content = panel;
+        return prompt.ShowDialog() == true;
     }
     private void Save()
     {

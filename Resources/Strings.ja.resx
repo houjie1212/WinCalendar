@@ -411,4 +411,67 @@
   <data name="SourceUsAll" xml:space="preserve">
     <value>祝日・地域の休日・記念日</value>
   </data>
+  <data name="CheckUpdate" xml:space="preserve">
+    <value>更新を確認</value>
+  </data>
+  <data name="UpdateChecking" xml:space="preserve">
+    <value>更新を確認しています…</value>
+  </data>
+  <data name="UpdateNotes" xml:space="preserve">
+    <value>更新内容</value>
+  </data>
+  <data name="UpdateInstall" xml:space="preserve">
+    <value>更新して再起動</value>
+  </data>
+  <data name="UpdateDownloading" xml:space="preserve">
+    <value>更新をダウンロードして検証しています…</value>
+  </data>
+  <data name="UpdateInstalling" xml:space="preserve">
+    <value>再起動の準備中…</value>
+  </data>
+  <data name="UpdateAvailable" xml:space="preserve">
+    <value>現在: {0}   新バージョン: {1}</value>
+  </data>
+  <data name="UpdateNoRelease" xml:space="preserve">
+    <value>公開されている正式版はありません。</value>
+  </data>
+  <data name="UpdateLatest" xml:space="preserve">
+    <value>最新バージョンです。</value>
+  </data>
+  <data name="UpdateCheckFailed" xml:space="preserve">
+    <value>更新を確認できません。後でもう一度お試しください。</value>
+  </data>
+  <data name="UpdateRateLimit" xml:space="preserve">
+    <value>GitHub のリクエストが制限されています。後でもう一度お試しください。</value>
+  </data>
+  <data name="UpdateMissingPackage" xml:space="preserve">
+    <value>有効な更新パッケージまたはチェックサムがありません。</value>
+  </data>
+  <data name="UpdateInvalidVersion" xml:space="preserve">
+    <value>リリースまたはパッケージのバージョンを確認できません。</value>
+  </data>
+  <data name="UpdateHashFailed" xml:space="preserve">
+    <value>チェックサムが一致しないため更新を中止しました。</value>
+  </data>
+  <data name="UpdateFailed" xml:space="preserve">
+    <value>更新に失敗しました。元のファイルと設定は保持されています。</value>
+  </data>
+  <data name="UpdateCannotInstall" xml:space="preserve">
+    <value>更新を準備できません。空き容量とフォルダーの権限を確認するか、github.com/houjie1212/WinCalendar/releases から手動でダウンロードしてください。</value>
+  </data>
+  <data name="UpdateFileConflict" xml:space="preserve">
+    <value>更新ファイルが管理対象外のファイルと競合します。手動で更新してください。</value>
+  </data>
+  <data name="UpdateUnsaved" xml:space="preserve">
+    <value>更新前に変更した設定を保存してください。</value>
+  </data>
+  <data name="UpdateSaveContinue" xml:space="preserve">
+    <value>保存して続行</value>
+  </data>
+  <data name="UpdateCancel" xml:space="preserve">
+    <value>更新をキャンセル</value>
+  </data>
+  <data name="UpdateRolledBack" xml:space="preserve">
+    <value>新バージョンを起動できなかったため、以前のバージョンに戻しました。</value>
+  </data>
 </root>
