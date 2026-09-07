@@ -18,6 +18,7 @@ public sealed class SettingsWindow : Window
     private readonly Action exit;
     private readonly Func<Task> refreshData;
     private readonly StackPanel body = new() { Margin = new Thickness(20) };
+    private readonly DockPanel page = new();
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private bool startup;
     public SettingsWindow(Window owner, Settings settings, Action exit, Func<Task> refreshData)
@@ -27,7 +28,7 @@ public sealed class SettingsWindow : Window
         WindowStartupLocation = WindowStartupLocation.CenterOwner; ShowInTaskbar = false; ResizeMode = ResizeMode.CanResize;
         Background = owner.Background; Foreground = owner.Foreground; Resources = owner.Resources; FontFamily = owner.FontFamily; FontSize = 14;
         startup = Registry.GetValue(@"HKEY_CURRENT_USER\" + RunKey, "WinCalendar", null) != null;
-        Content = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        Content = page;
         Render();
         L.Changed += LanguageChanged;
         Closed += (_, _) => L.Changed -= LanguageChanged;
@@ -36,6 +37,16 @@ public sealed class SettingsWindow : Window
     private void Render()
     {
         body.Children.Clear();
+        foreach (var scroll in page.Children.OfType<ScrollViewer>()) scroll.Content = null;
+        page.Children.Clear();
+        // 底部操作栏固定显示，设置内容单独滚动。
+        var exitButton = Ui.Button(L.T("Exit"), "Exit", exit);
+        exitButton.HorizontalAlignment = HorizontalAlignment.Right;
+        exitButton.VerticalAlignment = VerticalAlignment.Top;
+        var bottomBar = new DockPanel { Margin = new Thickness(20, 8, 20, 20) };
+        DockPanel.SetDock(exitButton, Dock.Right); bottomBar.Children.Add(exitButton);
+        DockPanel.SetDock(bottomBar, Dock.Bottom); page.Children.Add(bottomBar);
+        page.Children.Add(new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
         body.Children.Add(Ui.Text(L.T("Subscriptions"), 22, true));
         body.Children.Add(Ui.Text(L.T("Privacy"), 12));
         foreach (var source in draft.Sources.ToArray())
@@ -80,11 +91,19 @@ public sealed class SettingsWindow : Window
         var versionRow = new WrapPanel(); versionRow.Children.Add(versionLabel);
         versionRow.Children.Add(Ui.Button(L.T("CheckUpdate"), "CheckUpdate", () => new UpdateDialog(this, SaveBeforeUpdate, exit).ShowDialog()));
         body.Children.Add(versionRow);
-        var footer = new WrapPanel { Margin = new Thickness(0, 20, 0, 0) };
+        var footer = new WrapPanel();
         footer.Children.Add(Ui.Button(L.T("Save"), "Save", Save));
         footer.Children.Add(Ui.Button(L.T("Refresh"), "Refresh", async () => { if (Apply()) { IsEnabled = false; try { await refreshData(); Render(); } finally { IsEnabled = true; } } }));
         footer.Children.Add(Ui.Button(L.T("Cancel"), "Cancel", () => DialogResult = false));
-        footer.Children.Add(Ui.Button(L.T("Exit"), "Exit", exit)); body.Children.Add(footer);
+        var uninstall = Ui.Button(L.T("Uninstall"), "Uninstall", async () => await Uninstall());
+        uninstall.IsEnabled = UninstallService.Find() != null;
+        if (!uninstall.IsEnabled)
+        {
+            uninstall.ToolTip = L.T("UninstallUnavailable");
+            AutomationProperties.SetHelpText(uninstall, L.T("UninstallUnavailable"));
+            ToolTipService.SetShowOnDisabled(uninstall, true);
+        }
+        footer.Children.Add(uninstall); bottomBar.Children.Add(footer);
     }
     // 检查版本不保存设置；确认安装时才提示处理尚未保存的修改。
     private bool SaveBeforeUpdate()
@@ -98,6 +117,15 @@ public sealed class SettingsWindow : Window
         panel.Children.Add(Ui.Button(L.T("UpdateCancel"), "UpdateCancel", () => prompt.DialogResult = false));
         prompt.Content = panel;
         return prompt.ShowDialog() == true;
+    }
+    // 退出后才运行系统卸载器，避免正在运行的实例阻止卸载。
+    private async Task Uninstall()
+    {
+        if (MessageBox.Show(this, L.T("UninstallConfirm"), L.T("Uninstall"), MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK) return;
+        IsEnabled = false;
+        try { await UninstallService.Launch(); exit(); }
+        catch { MessageBox.Show(this, L.T("UninstallFailed"), L.T("Uninstall")); }
+        finally { IsEnabled = true; }
     }
     private void Save()
     {

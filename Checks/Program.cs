@@ -21,6 +21,18 @@ L.Reload();
 Store.Root = Path.Combine(Path.GetTempPath(), "WinCalendarChecks-" + Guid.NewGuid().ToString("N"));
 try
 {
+    // 不访问真实卸载记录，使用临时目录验证卸载命令匹配。
+    string uninstallDirectory = Path.Combine(Store.Root, "installed with spaces");
+    Directory.CreateDirectory(uninstallDirectory);
+    string uninstaller = Path.Combine(uninstallDirectory, "unins000.exe"); File.WriteAllText(uninstaller, "test");
+    Check(UninstallService.Resolve(uninstallDirectory, uninstallDirectory, "\"" + uninstaller + "\"") == uninstaller, "卸载命令支持含空格目录");
+    Check(UninstallService.Resolve(uninstallDirectory, null, null) == null, "便携版禁用卸载");
+    Check(UninstallService.Resolve(uninstallDirectory, uninstallDirectory + "-other", uninstaller) == null, "卸载拒绝安装目录不匹配");
+    Check(UninstallService.Resolve(uninstallDirectory, uninstallDirectory, uninstaller + " /SILENT") == null, "卸载不执行注册命令中的额外参数");
+    Check(UninstallService.Resolve(uninstallDirectory, uninstallDirectory, Path.Combine(uninstallDirectory, "cmd.exe")) == null, "卸载拒绝其他可执行文件");
+    File.Delete(uninstaller);
+    Check(UninstallService.Resolve(uninstallDirectory, uninstallDirectory, uninstaller) == null, "卸载程序缺失时禁用");
+
     // 更新检查使用模拟 HTTP 响应，不依赖线上 Release 或用户订阅。
     Check(UpdateService.ParseVersion("v1.10.0") > UpdateService.ParseVersion("1.9.9"), "更新版本按数字比较");
     Reject(() => UpdateService.ParseVersion("v1.2.3-beta"), "更新拒绝预发布版本格式");

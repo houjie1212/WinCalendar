@@ -486,4 +486,16 @@
   <data name="MonthUnit" xml:space="preserve">
     <value>月</value>
   </data>
+  <data name="Uninstall" xml:space="preserve">
+    <value>解除安裝</value>
+  </data>
+  <data name="UninstallUnavailable" xml:space="preserve">
+    <value>目前執行版本未透過安裝程式安裝，或安裝記錄不符。</value>
+  </data>
+  <data name="UninstallConfirm" xml:space="preserve">
+    <value>將結束 WinCalendar 並開啟解除安裝精靈。尚未儲存的修改不會自動儲存。請在精靈中選擇是否保留訂閱及設定，預設刪除。</value>
+  </data>
+  <data name="UninstallFailed" xml:space="preserve">
+    <value>無法啟動解除安裝程式，請嘗試透過 Windows 設定 → 應用程式 → 已安裝的應用程式解除安裝。</value>
+  </data>
 </root>

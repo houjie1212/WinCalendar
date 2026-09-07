@@ -486,4 +486,16 @@
   <data name="MonthUnit" xml:space="preserve">
     <value>mo</value>
   </data>
+  <data name="Uninstall" xml:space="preserve">
+    <value>Uninstall</value>
+  </data>
+  <data name="UninstallUnavailable" xml:space="preserve">
+    <value>This running copy has no matching installer registration.</value>
+  </data>
+  <data name="UninstallConfirm" xml:space="preserve">
+    <value>WinCalendar will exit and open the uninstall wizard. Unsaved changes will not be saved. In the wizard, choose whether to keep subscriptions and settings; the default is to delete them.</value>
+  </data>
+  <data name="UninstallFailed" xml:space="preserve">
+    <value>Unable to start the uninstaller. Try Windows Settings &gt; Apps &gt; Installed apps.</value>
+  </data>
 </root>

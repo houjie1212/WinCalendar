@@ -486,4 +486,16 @@
   <data name="MonthUnit" xml:space="preserve">
     <value>月</value>
   </data>
+  <data name="Uninstall" xml:space="preserve">
+    <value>卸载</value>
+  </data>
+  <data name="UninstallUnavailable" xml:space="preserve">
+    <value>当前运行版本未通过安装程序安装，或安装记录不匹配。</value>
+  </data>
+  <data name="UninstallConfirm" xml:space="preserve">
+    <value>将退出 WinCalendar 并打开卸载向导。尚未保存的修改不会自动保存。请在向导中选择是否保留订阅和设置，默认删除。</value>
+  </data>
+  <data name="UninstallFailed" xml:space="preserve">
+    <value>无法启动卸载程序，请尝试通过 Windows 设置 → 应用 → 已安装的应用进行卸载。</value>
+  </data>
 </root>

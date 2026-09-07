@@ -486,4 +486,16 @@
   <data name="MonthUnit" xml:space="preserve">
     <value>月</value>
   </data>
+  <data name="Uninstall" xml:space="preserve">
+    <value>アンインストール</value>
+  </data>
+  <data name="UninstallUnavailable" xml:space="preserve">
+    <value>現在の実行フォルダーに一致するインストール情報がありません。</value>
+  </data>
+  <data name="UninstallConfirm" xml:space="preserve">
+    <value>WinCalendar を終了してアンインストール画面を開きます。未保存の変更は保存されません。購読と設定を保持するか選択してください。既定では削除されます。</value>
+  </data>
+  <data name="UninstallFailed" xml:space="preserve">
+    <value>アンインストールを開始できません。Windows の設定 → アプリ → インストールされているアプリから実行してください。</value>
+  </data>
 </root>
