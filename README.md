@@ -2,6 +2,18 @@
 
 Windows 11 x64 日历：点击系统时间打开，默认显示公历，支持自定义 ICS 日历；启用中国节假日订阅后显示节日名称和“休／班”标识。
 
+## 界面预览
+
+### 主界面
+
+下图展示启用节假日订阅和中国农历后的效果，不代表默认设置。
+
+<img src="docs/images/main-window.png" alt="WinCalendar 主界面：节假日订阅颜色、休班标识与中国农历" width="440">
+
+### 设置界面
+
+<img src="docs/images/settings-window.png" alt="WinCalendar 设置界面：日历订阅、常用订阅与显示选项" width="520">
+
 ## 使用
 
 1. 解压独立运行包到固定目录，运行 `WinCalendar.exe`。整个目录必须一起保留。
