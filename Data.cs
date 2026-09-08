@@ -25,6 +25,7 @@ public sealed class Subscription
     public bool Enabled { get; set; } = true;
     public DateTimeOffset? LastSuccess { get; set; }
     [JsonIgnore] public bool Failed { get; set; }
+    [JsonIgnore] public bool Blocked { get; set; }
 }
 // 常用订阅仅提供编辑初始值，不自动修改用户订阅列表。
 public sealed record SubscriptionOption(string NameKey, string Url);
@@ -93,28 +94,30 @@ public static class Store
 }
 public static class Download
 {
-    private static readonly HttpClient Client = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(20) };
+    private static readonly HttpClient Client = new(PublicNetwork.CreateHandler()) { Timeout = TimeSpan.FromSeconds(20) };
     public static Uri Validate(string value)
     {
         value = value.Trim();
         if (value.StartsWith("webcal://", StringComparison.OrdinalIgnoreCase)) value = "https://" + value[9..];
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != "https" || !string.IsNullOrEmpty(uri.UserInfo)) throw new ArgumentException("InvalidUrl");
+        PublicNetwork.ValidateHost(uri.DnsSafeHost);
         return uri;
     }
     // 主机及协议由 Uri 标准化；路径、令牌等查询参数保持区分大小写。
     public static bool SameUrl(string left, string right)
     {
         try { return string.Equals(Validate(left).AbsoluteUri, Validate(right).AbsoluteUri, StringComparison.Ordinal); }
-        catch (ArgumentException) { return false; }
+        catch (Exception e) when (e is ArgumentException or SubscriptionBlockedException) { return false; }
     }
-    public static async Task<string> Text(Uri uri, CancellationToken ct = default)
+    public static async Task<string> Text(Uri uri, CancellationToken ct = default, HttpClient? transport = null)
     {
         const int limit = 5 * 1024 * 1024;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
         deadline.CancelAfter(TimeSpan.FromSeconds(25));
         for (int hop = 0; hop < 5; hop++)
         {
-            using var response = await Client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, deadline.Token).ConfigureAwait(false);
+            uri = Validate(uri.AbsoluteUri);
+            using var response = await (transport ?? Client).GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, deadline.Token).ConfigureAwait(false);
             if ((int)response.StatusCode is >= 300 and < 400 && response.Headers.Location is { } location)
             {
                 uri = Validate(new Uri(uri, location).AbsoluteUri);

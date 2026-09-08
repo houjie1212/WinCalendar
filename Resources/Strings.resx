@@ -500,4 +500,5 @@
   </data>
   <data name="UpdateElevated" xml:space="preserve"><value>Run WinCalendar without administrator privileges before updating or recovering.</value></data>
   <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>Update recovery data is invalid or uses an older format. Files were preserved. Repair using the installer.</value></data>
+  <data name="SubscriptionBlocked" xml:space="preserve"><value>Subscription blocked: only public HTTPS addresses are allowed. Proxy connections are disabled.</value></data>
 </root>

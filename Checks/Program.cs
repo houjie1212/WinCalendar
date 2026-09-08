@@ -2,6 +2,23 @@ using System.Collections;
 using System.Globalization;
 using WinCalendar;
 
+// 可选真实公网检查：只使用公开源，输出不含地址令牌。
+if (args.Length == 1 && args[0] == "--check-public-feeds")
+{
+    L.Reload();
+    foreach (var source in SubscriptionPreset.All)
+    {
+        try
+        {
+            var text = Download.Text(Download.Validate(source.Url)).GetAwaiter().GetResult();
+            var events = IcsParser.Parse(text, new DateTime(2026, 9, 1), new DateTime(2026, 10, 1), "public", source.Color, source.Kind);
+            Console.WriteLine(source.NameKey + " PASS events=" + events.Count);
+        }
+        catch (Exception e) { Console.WriteLine(source.NameKey + " UNVERIFIED " + e.GetType().Name); Environment.ExitCode = 1; }
+    }
+    return;
+}
+
 // 隔离发行流程通过环境变量共享检查目录，不访问用户配置。
 if (Environment.GetEnvironmentVariable("WINCALENDAR_CHECK_ROOT") is string checkRoot) Store.Root = checkRoot;
 if (args.Length == 2 && args[0] is "--apply-update" or "--recover-update")
@@ -35,6 +52,75 @@ L.Reload();
 Store.Root = Path.Combine(Path.GetTempPath(), "WinCalendarChecks-" + Guid.NewGuid().ToString("N"));
 try
 {
+    // 连接替身只接收已校验的 IP，不建立真实网络连接。
+    System.Net.IPAddress IP(string value) => System.Net.IPAddress.Parse(value);
+    foreach (var address in new[] { "0.0.0.0", "10.1.2.3", "100.64.0.1", "127.0.0.1", "169.254.169.254", "172.16.0.1", "192.168.1.1", "198.18.0.1", "192.0.2.1", "224.0.0.1", "255.255.255.255", "::1", "::", "fe80::1", "fc00::1", "ff02::1", "::ffff:127.0.0.1", "64:ff9b::7f00:1", "2002:7f00:1::1", "2001:db8::1", "3fff::1" })
+        Check(!PublicNetwork.IsPublic(IP(address), Array.Empty<System.Net.IPAddress>()), "订阅拒绝非公网 " + address);
+    foreach (var address in new[] { "8.8.8.8", "1.1.1.1", "2606:4700:4700::1111", "::ffff:8.8.8.8" })
+        Check(PublicNetwork.IsPublic(IP(address), Array.Empty<System.Net.IPAddress>()), "订阅允许公网 " + address);
+    Check(!PublicNetwork.IsPublic(IP("8.8.8.8"), new[] { IP("::ffff:8.8.8.8") }), "拒绝本机公网网卡地址");
+    foreach (var host in new[] { "127.1", "2130706433", "0x7f000001", "[::1]", "localhost", "localhost.", "x.localhost" })
+        Reject(() => Download.Validate("https://" + host + "/a.ics"), "拒绝特殊主机写法 " + host);
+    int resolves = 0, connections = 0;
+    Task<System.Net.IPAddress[]> ResolvePublic(string host, CancellationToken ct) { resolves++; return Task.FromResult(resolves == 1 ? new[] { IP("8.8.8.8"), IP("1.1.1.1") } : new[] { IP("127.0.0.1") }); }
+    ValueTask<Stream> Dial(System.Net.IPEndPoint endpoint, CancellationToken ct)
+    {
+        connections++;
+        Check(endpoint.Address.Equals(IP(connections == 1 ? "8.8.8.8" : "1.1.1.1")), "连接只使用批准 IP " + connections);
+        if (connections == 1) throw new System.Net.Sockets.SocketException();
+        return ValueTask.FromResult<Stream>(new MemoryStream());
+    }
+    using (PublicNetwork.Connect("calendar.example", 443, CancellationToken.None, ResolvePublic, Dial, () => Array.Empty<System.Net.IPAddress>()).AsTask().GetAwaiter().GetResult()) { }
+    Check(resolves == 1 && connections == 2, "备用连接不重新解析 DNS");
+    connections = 0;
+    foreach (var answers in new[] { Array.Empty<System.Net.IPAddress>(), new[] { IP("8.8.8.8"), IP("10.0.0.1") } })
+        Reject(() => PublicNetwork.Connect("calendar.example", 443, CancellationToken.None, (h,c) => Task.FromResult(answers), Dial, () => Array.Empty<System.Net.IPAddress>()).AsTask().GetAwaiter().GetResult(), "空或混合 DNS 整体拒绝");
+    Check(connections == 0, "DNS 拒绝发生在连接之前");
+    using (var cancelledNetwork = new CancellationTokenSource())
+    {
+        cancelledNetwork.Cancel();
+        Reject(() => PublicNetwork.Connect("calendar.example", 443, cancelledNetwork.Token, ResolvePublic, Dial, () => Array.Empty<System.Net.IPAddress>()).AsTask().GetAwaiter().GetResult(), "取消后不连接");
+        Check(connections == 0, "取消不绕过检查");
+    }
+    int failedDials = 0;
+    Reject(() => PublicNetwork.Connect("calendar.example", 443, CancellationToken.None,
+        (h,c) => Task.FromResult(new[] { IP("8.8.8.8"), IP("1.1.1.1") }),
+        (e,c) => { failedDials++; throw new System.Net.Sockets.SocketException(); }, () => Array.Empty<System.Net.IPAddress>()).AsTask().GetAwaiter().GetResult(), "全部 IP 连接失败不回退域名");
+    Check(failedDials == 2, "失败仅尝试本次批准的地址");
+    using (var duringDns = new CancellationTokenSource())
+    {
+        Reject(() => PublicNetwork.Connect("calendar.example", 443, duringDns.Token,
+            (h,c) => { duringDns.Cancel(); return Task.FromResult(new[] { IP("8.8.8.8") }); },
+            Dial, () => Array.Empty<System.Net.IPAddress>()).AsTask().GetAwaiter().GetResult(), "DNS 完成时取消不建立连接");
+        Check(connections == 0, "DNS 期间取消后无连接");
+    }
+    using (var policy = PublicNetwork.CreateHandler())
+        Check(!policy.UseProxy && !policy.UseCookies && !policy.AllowAutoRedirect && policy.SslOptions.RemoteCertificateValidationCallback == null, "禁用代理 Cookie 并保留系统证书验证");
+    foreach (bool privateRedirect in new[] { false, true })
+    {
+        var transport = new SubscriptionRedirectStub(privateRedirect);
+        using var client = new System.Net.Http.HttpClient(transport);
+        if (privateRedirect)
+        {
+            Reject(() => Download.Text(new Uri("https://calendar.example/a"), default, client).GetAwaiter().GetResult(), "重定向内网拒绝");
+            Check(transport.Calls == 1, "内网重定向不发送请求");
+        }
+        else Check(Download.Text(new Uri("https://calendar.example/a"), default, client).GetAwaiter().GetResult() == "calendar", "公网重定向正常");
+    }
+    Check(PublicNetwork.WasBlocked(new System.Net.Http.HttpRequestException("failed", new SubscriptionBlockedException())), "安全拦截穿透网络异常包装");
+
+    // 内网旧配置仍可保留；安全拦截和离线刷新都使用已有有效缓存。
+    var cachedSource = new Subscription { Url = "https://127.0.0.1/private?token=test", Name = "缓存检查" };
+    var cachedSettings = new Settings(); cachedSettings.Sources.Add(cachedSource);
+    string cachedIcs = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:cached\r\nDTSTART;VALUE=DATE:20260908\r\nDTEND;VALUE=DATE:20260909\r\nSUMMARY:Cached\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+    Store.Write(Store.PathFor(cachedSource.Id + ".ics"), cachedIcs);
+    var cachedSubscriptions = new Subscriptions(cachedSettings);
+    cachedSubscriptions.Refresh(new DateTime(2026, 9, 1), new DateTime(2026, 10, 1), true).GetAwaiter().GetResult();
+    Check(cachedSource.Blocked && cachedSource.Failed && cachedSubscriptions.Events.Count == 1, "地址拦截保留有效缓存及独立状态");
+    cachedSubscriptions.Refresh(new DateTime(2026, 9, 1), new DateTime(2026, 10, 1), false).GetAwaiter().GetResult();
+    Check(cachedSubscriptions.Events.Count == 1 && File.ReadAllText(Store.PathFor(cachedSource.Id + ".ics")) == cachedIcs, "离线缓存不被删除或覆盖");
+
+    File.Delete(Store.PathFor("settings.json")); // 清除本项检查的配置，不影响后续默认配置断言。
     // 识别与命中使用纯数据检查，不改变当前任务栏或用户设置。
     var bar = new System.Windows.Rect(-1920, 1000, 1920, 80);
     var rect = new System.Windows.Rect(-150, 1010, 100, 50);
@@ -224,7 +310,8 @@ try
         var deadline = DateTime.UtcNow.AddSeconds(55);
         while (DateTime.UtcNow < deadline)
         {
-            try { finished = UpdateInstaller.ReadJournal(transaction, installed); } catch (IOException) { }
+            // 观察进度不占用写入权限，避免检查本身干扰工作进程原子替换记录。
+            try { using var statusFile = new FileStream(UpdateInstaller.JournalPath(transaction), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete); finished = System.Text.Json.JsonSerializer.Deserialize<UpdateJournal>(statusFile); } catch (IOException) { }
             if (finished?.Phase is "complete" or "rolledback") break;
             Thread.Sleep(100);
         }
@@ -478,5 +565,19 @@ sealed class UpdateHttpStub(int status, string body) : System.Net.Http.HttpMessa
     {
         token.ThrowIfCancellationRequested();
         return Task.FromResult(new System.Net.Http.HttpResponseMessage((System.Net.HttpStatusCode)status) { Content = new System.Net.Http.StringContent(body) });
+    }
+}
+
+// 模拟重定向，验证不安全目标在下一次请求之前被拒绝。
+sealed class SubscriptionRedirectStub(bool privateTarget) : System.Net.Http.HttpMessageHandler
+{
+    public int Calls { get; private set; }
+    protected override Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken ct)
+    {
+        Calls++;
+        var response = new System.Net.Http.HttpResponseMessage(Calls == 1 ? System.Net.HttpStatusCode.Redirect : System.Net.HttpStatusCode.OK);
+        if (Calls == 1) response.Headers.Location = new Uri(privateTarget ? "https://127.0.0.1/private" : "https://other.example/b");
+        else response.Content = new System.Net.Http.StringContent("calendar");
+        return Task.FromResult(response);
     }
 }

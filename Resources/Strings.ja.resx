@@ -500,4 +500,5 @@
   </data>
   <data name="UpdateElevated" xml:space="preserve"><value>管理者権限を使わずに WinCalendar を再起動してから更新または復元してください。</value></data>
   <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>更新の復元記録が無効か旧形式です。ファイルは保持されています。インストーラーで修復してください。</value></data>
+  <data name="SubscriptionBlocked" xml:space="preserve"><value>購読をブロックしました。公開 HTTPS アドレスのみ接続でき、プロキシは使用しません。</value></data>
 </root>

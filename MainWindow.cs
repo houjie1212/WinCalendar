@@ -133,7 +133,7 @@ public sealed class MainWindow : Window
         int y = point.Y <= area.Top ? area.Top + 8 : area.Bottom - height - 8;
         SetWindowPos(new WindowInteropHelper(this).Handle, 0, x, y, w, height, 0x0014);
     }
-    private string StatusText() => clock == null ? L.T("Preview") : busy ? L.T("Refreshing") : dataError ? L.T("SaveFailed") : !clock.Available ? L.T("ClockMissing") : settings.Sources.Any(x => x.Enabled && x.Failed) ? L.T("RefreshFailed") : L.T("ClockReady");
+    private string StatusText() => clock == null ? L.T("Preview") : busy ? L.T("Refreshing") : dataError ? L.T("SaveFailed") : !clock.Available ? L.T("ClockMissing") : settings.Sources.Any(x => x.Enabled && x.Blocked) ? L.T("SubscriptionBlocked") : settings.Sources.Any(x => x.Enabled && x.Failed) ? L.T("RefreshFailed") : L.T("ClockReady");
     private async Task RefreshData(bool network)
     {
         if (busy) return;

@@ -500,4 +500,5 @@
   </data>
   <data name="UpdateElevated" xml:space="preserve"><value>请以普通权限重新运行 WinCalendar 后再更新或恢复。</value></data>
   <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>更新恢复记录无效或为旧格式，文件已保留。请使用安装包修复。</value></data>
+  <data name="SubscriptionBlocked" xml:space="preserve"><value>订阅被安全拦截：仅允许公网 HTTPS 地址，不使用代理。</value></data>
 </root>

@@ -60,6 +60,7 @@ public sealed class SettingsWindow : Window
             AutomationProperties.SetName(name, source.Name + " " + L.T("Enabled"));
             name.Checked += (_, _) => source.Enabled = true; name.Unchecked += (_, _) => source.Enabled = false;
             row.Children.Add(name); body.Children.Add(row);
+            if (source.Blocked || live.Sources.Any(x => x.Id == source.Id && x.Blocked)) body.Children.Add(Ui.Text(L.T("SubscriptionBlocked"), 11));
             body.Children.Add(Ui.Text(L.T("LastSuccess") + ": " + (source.LastSuccess?.LocalDateTime.ToString("g", L.Format) ?? L.T("Never")), 11));
         }
         body.Children.Add(Ui.Button(L.T("Add"), "Add", () => Edit(null)));
@@ -200,7 +201,7 @@ public sealed class SettingsWindow : Window
         panel.Children.Add(Ui.Button(L.T("Save"), "Save", () =>
         {
             if (string.IsNullOrWhiteSpace(name.Text)) { error.Text = L.T("InvalidName"); return; }
-            Uri uri; try { uri = Download.Validate(url.Text); } catch { error.Text = L.T("InvalidUrl"); return; }
+            Uri uri; try { uri = Download.Validate(url.Text); } catch (SubscriptionBlockedException) { error.Text = L.T("SubscriptionBlocked"); return; } catch { error.Text = L.T("InvalidUrl"); return; }
             if (draft.Sources.Any(other => other != original && Download.SameUrl(other.Url, uri.AbsoluteUri))) { error.Text = L.T("DuplicateSubscription"); return; }
             var source = original ?? new Subscription();
             // 更换链接使用新缓存键，失败时不会误显示旧链接的日程。

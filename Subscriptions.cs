@@ -143,9 +143,9 @@ public sealed class Subscriptions
                         parsed = await IcsParser.Isolated(pending, from, to, source);
                         File.Move(pending, cache, true);
                         source.LastSuccess = DateTimeOffset.Now;
-                        source.Failed = false;
+                        source.Failed = false; source.Blocked = false;
                     }
-                    catch { source.Failed = true; }
+                    catch (Exception e) { source.Failed = true; source.Blocked = PublicNetwork.WasBlocked(e); }
                     finally { if (File.Exists(pending)) File.Delete(pending); }
                 }
                 if (parsed == null && File.Exists(cache))
