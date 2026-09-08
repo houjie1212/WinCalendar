@@ -25,6 +25,7 @@ public sealed class MainWindow : Window
     private DateTime month = new(DateTime.Today.Year, DateTime.Today.Month, 1), selected = DateTime.Today;
     private DateTimeOffset lastNetwork = DateTimeOffset.MinValue;
     private bool busy, modal, exit, dataError;
+    private bool startupPending;
     private Point anchor;
     private ComboBox yearPicker = new(), monthPicker = new();
     private bool renderPending;
@@ -33,8 +34,9 @@ public sealed class MainWindow : Window
     private TextBlock status = new();
     private DateTime lastDay = DateTime.Today;
     private readonly bool preview;
-    public MainWindow(Settings settings, bool preview = false, bool snapshot = false)
+    public MainWindow(Settings settings, bool preview = false, bool snapshot = false, bool deferStartup = false)
     {
+        startupPending = deferStartup;
         this.preview = preview;
         this.settings = settings;
         subscriptions = new(settings);
@@ -85,6 +87,12 @@ public sealed class MainWindow : Window
         if (msg == 0x2E0) Dispatcher.BeginInvoke(() => Position(anchor));
         return 0;
     }
+    // 确认及配置迁移完成后才开放刷新和设置写入。
+    public async Task CompleteStartup()
+    {
+        startupPending = false; Render();
+        await RefreshData(false); await RefreshData(true);
+    }
     public void Cleanup() { timer.Stop(); clock?.Dispose(); }
     public async void RefreshEnvironment() { L.Reload(); ApplyTheme(); Render(); if (IsVisible) Position(anchor); await RefreshData(false); }
     public static DateTime GridStart(DateTime month, DayOfWeek first) => month.AddDays(-((7 + (int)month.DayOfWeek - (int)first) % 7));
@@ -133,10 +141,10 @@ public sealed class MainWindow : Window
         int y = point.Y <= area.Top ? area.Top + 8 : area.Bottom - height - 8;
         SetWindowPos(new WindowInteropHelper(this).Handle, 0, x, y, w, height, 0x0014);
     }
-    private string StatusText() => clock == null ? L.T("Preview") : busy ? L.T("Refreshing") : dataError ? L.T("SaveFailed") : !clock.Available ? L.T("ClockMissing") : settings.Sources.Any(x => x.Enabled && x.UrlUnreadable) ? L.T("AddressDecryptFailed") : settings.Sources.Any(x => x.Enabled && x.Blocked) ? L.T("SubscriptionBlocked") : settings.Sources.Any(x => x.Enabled && x.Failed) ? L.T("RefreshFailed") : L.T("ClockReady");
+    private string StatusText() => startupPending ? L.T("UpdateConfirming") : clock == null ? L.T("Preview") : busy ? L.T("Refreshing") : dataError ? L.T("SaveFailed") : !clock.Available ? L.T("ClockMissing") : settings.Sources.Any(x => x.Enabled && x.UrlUnreadable) ? L.T("AddressDecryptFailed") : settings.Sources.Any(x => x.Enabled && x.Blocked) ? L.T("SubscriptionBlocked") : settings.Sources.Any(x => x.Enabled && x.Failed) ? L.T("RefreshFailed") : L.T("ClockReady");
     private async Task RefreshData(bool network)
     {
-        if (busy) return;
+        if (busy || startupPending) return;
         busy = true; status.Text = StatusText();
         if (network) lastNetwork = DateTimeOffset.Now;
         var displayed = month;
@@ -328,6 +336,7 @@ public sealed class MainWindow : Window
     }
     private async void OpenSettings()
     {
+        if (startupPending) return;
         modal = true;
         try
         {

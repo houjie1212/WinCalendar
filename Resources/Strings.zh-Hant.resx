@@ -504,4 +504,6 @@
   <data name="AddressDecryptFailed" xml:space="preserve"><value>訂閱位址無法解密，請重新填寫。</value></data>
   <data name="AddressMigrationFailed" xml:space="preserve"><value>訂閱位址加密遷移失敗，原設定已保留。請解決檔案存取或 Windows 帳戶問題後重新啟動。</value></data>
   <data name="SettingsFormatUnsupported" xml:space="preserve"><value>不支援此設定格式，原檔案已保留。請使用相容版本。</value></data>
+  <data name="UpdateConfirmationFailed" xml:space="preserve"><value>更新啟動確認失敗，請使用安裝程式修復。確認前未修改設定。</value></data>
+  <data name="UpdateConfirming" xml:space="preserve"><value>正在確認更新啟動…</value></data>
 </root>

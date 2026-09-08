@@ -504,4 +504,6 @@
   <data name="AddressDecryptFailed" xml:space="preserve"><value>Subscription address cannot be decrypted. Please enter it again.</value></data>
   <data name="AddressMigrationFailed" xml:space="preserve"><value>Could not encrypt and migrate subscription addresses. The original settings were preserved. Resolve the file access or Windows account issue and restart.</value></data>
   <data name="SettingsFormatUnsupported" xml:space="preserve"><value>This settings format is not supported. The file was preserved. Use a compatible version.</value></data>
+  <data name="UpdateConfirmationFailed" xml:space="preserve"><value>Update startup confirmation failed. Repair using the installer. Settings were not changed before confirmation.</value></data>
+  <data name="UpdateConfirming" xml:space="preserve"><value>Confirming update startup…</value></data>
 </root>

@@ -6,9 +6,11 @@
     <UseWindowsForms>true</UseWindowsForms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
+    <!-- 发布及隔离历史源码不参与主工程编译。 -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);publish/**</DefaultItemExcludes>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>WinCalendar</AssemblyName>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <RuntimeFrameworkVersion Condition="'$(SelfContained)' == 'true'">8.0.30</RuntimeFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>

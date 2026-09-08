@@ -86,6 +86,8 @@ try
         }
         string oldJson = System.Text.Json.JsonSerializer.Serialize(new { Sources = new[] { new { privateSettings.Sources[0].Id, Url = secret, Name = "旧配置", Enabled = false, Color = "#123456", Kind = 1 } }, ShowChineseLunar = true });
         Store.Write(configPath, oldJson);
+        Store.Load(migrate: false);
+        Check(File.ReadAllText(configPath) == oldJson, "更新确认前只读配置不迁移");
         var migrated = Store.Load();
         Check(migrated.Sources[0].Url == secret && migrated.Sources[0].Id == privateSettings.Sources[0].Id && !migrated.Sources[0].Enabled && migrated.ShowChineseLunar && !File.ReadAllText(configPath).Contains("Token-AbC"), "旧配置自动迁移且保留属性");
         Store.Write(configPath, oldJson);
@@ -227,6 +229,41 @@ try
     Check(UninstallService.Resolve(uninstallDirectory, uninstallDirectory, Path.Combine(uninstallDirectory, "cmd.exe")) == null, "卸载拒绝其他可执行文件");
     File.Delete(uninstaller);
     Check(UninstallService.Resolve(uninstallDirectory, uninstallDirectory, uninstaller) == null, "卸载程序缺失时禁用");
+
+    // 旧记录的兼容只允许确认；这里不启动或终止任何进程。
+    string legacyJob = Path.Combine(UpdateService.Root, Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(legacyJob);
+    var legacyRecord = new UpdateJournal { Target = AppContext.BaseDirectory, Phase = "starting", Files = new[] { "WinCalendar.exe" }, Existing = new[] { "WinCalendar.exe" } };
+    UpdateInstaller.ValidateConfirmation(legacyRecord, AppContext.BaseDirectory);
+    Check(true, "旧记录可进入受限确认校验");
+    Reject(() => UpdateInstaller.ValidateConfirmation(legacyRecord, Path.Combine(Store.Root, "unrelated")), "旧记录拒绝错误目标目录");
+    legacyRecord.Files = new[] { "../outside" };
+    Reject(() => UpdateInstaller.ValidateConfirmation(legacyRecord, AppContext.BaseDirectory), "旧确认拒绝越界文件名");
+    legacyRecord.Files = legacyRecord.Existing;
+    legacyRecord.Phase = "unknown";
+    Reject(() => UpdateInstaller.ValidateConfirmation(legacyRecord, AppContext.BaseDirectory), "旧确认拒绝非法阶段");
+    legacyRecord.Phase = "starting";
+    var rawRecord = System.Text.Json.JsonSerializer.SerializeToNode(legacyRecord)!.AsObject();
+    rawRecord.Remove("Format");
+    File.WriteAllText(UpdateInstaller.JournalPath(legacyJob), rawRecord.ToJsonString());
+    Reject(() => UpdateInstaller.Acknowledge(legacyJob), "旧确认拒绝缺失工作进程");
+    using (var current = System.Diagnostics.Process.GetCurrentProcess())
+    {
+        rawRecord["WorkerId"] = current.Id; rawRecord["WorkerStarted"] = current.StartTime.ToUniversalTime().Ticks;
+        rawRecord["ChildId"] = current.Id; rawRecord["ChildStarted"] = current.StartTime.ToUniversalTime().Ticks;
+        File.WriteAllText(UpdateInstaller.JournalPath(legacyJob), rawRecord.ToJsonString());
+        Reject(() => UpdateInstaller.Acknowledge(legacyJob), "旧确认拒绝无关工作进程路径");
+        Check(!current.HasExited, "确认拒绝不终止无关进程");
+    }
+    rawRecord["Format"] = 0;
+    File.WriteAllText(UpdateInstaller.JournalPath(legacyJob), rawRecord.ToJsonString());
+    Reject(() => UpdateInstaller.Acknowledge(legacyJob), "显式未知格式不当作旧格式接受");
+    rawRecord.Remove("Format"); rawRecord["Phase"] = "complete";
+    File.WriteAllText(UpdateInstaller.JournalPath(legacyJob), rawRecord.ToJsonString());
+    Check(!UpdateInstaller.ResumeIfNeeded(), "旧格式完成记录忽略且不执行恢复");
+    rawRecord["Phase"] = "rolledback";
+    File.WriteAllText(UpdateInstaller.JournalPath(legacyJob), rawRecord.ToJsonString());
+    Check(!UpdateInstaller.ResumeIfNeeded(), "旧格式回滚记录忽略且不执行恢复");
 
     // 更新检查使用模拟 HTTP 响应，不依赖线上 Release 或用户订阅。
     Check(UpdateService.ParseVersion("v1.10.0") > UpdateService.ParseVersion("1.9.9"), "更新版本按数字比较");

@@ -30,15 +30,31 @@ public sealed class App : Application
         if (!fresh) { MessageBox.Show(L.T("AlreadyRunning"), "WinCalendar"); app.instance.Dispose(); return 0; }
         try
         {
-            var settings = Store.Load();
-            var window = new MainWindow(settings, args.Contains("--preview"));
+            bool updated = args.Length == 2 && args[0] == "--updated";
+            var settings = Store.Load(migrate: !updated);
+            var window = new MainWindow(settings, args.Contains("--preview"), deferStartup: updated);
             app.MainWindow = window;
             app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             SystemEvents.UserPreferenceChanged += (_, _) => app.Dispatcher.BeginInvoke(() => { L.Reload(); window.RefreshEnvironment(); });
             SystemEvents.TimeChanged += (_, _) => app.Dispatcher.BeginInvoke(() => { L.Reload(); window.RefreshEnvironment(); });
             if (!args.Contains("--background")) window.ShowAtCursor();
             // Dispatcher 开始处理消息后再确认启动，构造或初始化失败时由更新进程回滚。
-            if (args.Length == 2 && args[0] == "--updated") app.Dispatcher.BeginInvoke(() => UpdateInstaller.Acknowledge(args[1]));
+            if (updated) app.Dispatcher.BeginInvoke(async () =>
+            {
+                try
+                {
+                    await UpdateInstaller.ConfirmStartup(args[1]);
+                    // 确认提交后才迁移旧配置；迁移失败仍保留旧文件。
+                    Store.Load();
+                    await window.CompleteStartup();
+                }
+                catch (Exception error)
+                {
+                    string key = error is SettingsStorageException storage ? storage.Key : error is UpdateException update ? update.Key : "AddressMigrationFailed";
+                    MessageBox.Show(L.T(key), "WinCalendar", MessageBoxButton.OK, MessageBoxImage.Error);
+                    window.Cleanup(); app.Shutdown(1);
+                }
+            });
             if (args.Contains("--update-failed")) MessageBox.Show(L.T("UpdateRolledBack"), "WinCalendar");
             app.Run();
             window.Cleanup();

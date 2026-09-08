@@ -57,12 +57,31 @@ public static class UpdateInstaller
 
     public static UpdateJournal ReadJournal(string job, string? target = null)
     {
-        using var file = new FileStream(UpdateService.SafePath(job, "journal.json"), FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
-        if (file.Length > 4 * 1024 * 1024) throw new InvalidDataException();
-        var j = JsonSerializer.Deserialize<UpdateJournal>(file) ?? throw new InvalidDataException();
-        if (j.Format != 1) throw new InvalidDataException();
+        var j = ReadRecord(job);
         if (target != null) UpdateSecurity.Validate(j, target);
         return j;
+    }
+    // 旧格式仅供确认及终态识别，更新工作进程和恢复入口仍要求新格式。
+    private static UpdateJournal ReadRecord(string job, bool allowLegacy = false)
+    {
+        using var file = new FileStream(UpdateService.SafePath(job, "journal.json"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        if (file.Length > 4 * 1024 * 1024) throw new InvalidDataException();
+        using var document = JsonDocument.Parse(file);
+        bool legacy = !document.RootElement.TryGetProperty("Format", out var format);
+        if (legacy ? !allowLegacy : !format.TryGetInt32(out int number) || number != 1) throw new InvalidDataException();
+        var j = document.RootElement.Deserialize<UpdateJournal>() ?? throw new InvalidDataException();
+        if (legacy) { j.Format = 0; j.RunnerName = "worker"; j.RecoveryRunner = false; }
+        return j;
+    }
+    public static void ValidateConfirmation(UpdateJournal j, string target)
+    {
+        if (j.Format == 1) { UpdateSecurity.Validate(j, target); return; }
+        if (j.Format != 0 || !Path.IsPathFullyQualified(j.Target) || !UpdateSecurity.SamePath(j.Target, target) ||
+            j.Phase is not ("prepared" or "applying" or "starting" or "complete" or "rolledback") ||
+            j.Files == null || j.Existing == null || j.Files.Length > 10001 || j.Existing.Length > 10001 ||
+            j.Files.Distinct(StringComparer.OrdinalIgnoreCase).Count() != j.Files.Length ||
+            j.Existing.Except(j.Files, StringComparer.OrdinalIgnoreCase).Any()) throw new InvalidDataException();
+        foreach (var name in j.Files) UpdateService.SafePath(target, name);
     }
 
     // 仅发行文件参与备份和替换；用户额外文件遇到同名新文件时拒绝覆盖。
@@ -225,13 +244,45 @@ public static class UpdateInstaller
         Start(Path.Combine(j.Target, "WinCalendar.exe"), "--update-failed").Dispose();
     }
 
-    public static void Acknowledge(string job)
+    public static UpdateJournal Acknowledge(string job)
     {
         ValidateJob(job);
         UpdateSecurity.RequireNormalUser();
-        var j = ReadJournal(job, AppContext.BaseDirectory);
-        if (!string.Equals(Path.GetFullPath(j.Target).TrimEnd('\\'), AppContext.BaseDirectory.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase) || j.Phase != "starting") throw new InvalidDataException();
-        using var ack = EventWaitHandle.OpenExisting(Signal(job, "ack")); ack.Set();
+        using var self = Process.GetCurrentProcess();
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (true)
+        {
+            var j = ReadRecord(job, true);
+            ValidateConfirmation(j, AppContext.BaseDirectory);
+            if (j.Phase != "starting" || j.RecoveryRunner) throw new InvalidDataException();
+            using var worker = UpdateSecurity.Find(j.WorkerId, j.WorkerStarted, Path.Combine(job, "worker", "WinCalendar.exe")) ?? throw new InvalidDataException();
+            // 旧工作进程在启动子进程后才写入 PID；仅允许短暂等待尚未填入的字段。
+            if (j.ChildId == 0 && j.ChildStarted == 0 && DateTime.UtcNow < deadline) { Thread.Sleep(50); continue; }
+            if (j.ChildId != self.Id || j.ChildStarted != self.StartTime.ToUniversalTime().Ticks) throw new InvalidDataException();
+            using var ack = EventWaitHandle.OpenExisting(Signal(job, "ack")); ack.Set();
+            return j;
+        }
+    }
+    // 只有工作进程提交 complete 后才允许迁移配置，避免旧版回滚后读到新格式。
+    public static async Task ConfirmStartup(string job)
+    {
+        try
+        {
+            var accepted = await Task.Run(() => Acknowledge(job));
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (true)
+            {
+                var j = ReadRecord(job, true);
+                ValidateConfirmation(j, AppContext.BaseDirectory);
+                if (j.Format != accepted.Format || j.WorkerId != accepted.WorkerId || j.WorkerStarted != accepted.WorkerStarted ||
+                    j.ChildId != accepted.ChildId || j.ChildStarted != accepted.ChildStarted || j.RecoveryRunner) throw new InvalidDataException();
+                if (j.Phase == "complete") return;
+                if (j.Phase != "starting" || DateTime.UtcNow >= deadline) throw new InvalidDataException();
+                await Task.Delay(50);
+            }
+        }
+        catch (UpdateException) { throw; }
+        catch { throw new UpdateException("UpdateConfirmationFailed"); }
     }
 
     // 若上次更新中断且主程序仍可启动，交给临时工作进程恢复后再运行。
@@ -246,9 +297,14 @@ public static class UpdateInstaller
             if (!File.Exists(JournalPath(job))) continue;
             try
             {
-                var j = ReadJournal(ValidateJob(job));
+                var j = ReadRecord(ValidateJob(job), true);
                 if (!UpdateSecurity.SamePath(j.Target, AppContext.BaseDirectory)) continue;
-                UpdateSecurity.Validate(j, AppContext.BaseDirectory);
+                ValidateConfirmation(j, AppContext.BaseDirectory);
+                if (j.Format == 0)
+                {
+                    if (j.Phase is "complete" or "rolledback") continue;
+                    throw new InvalidDataException();
+                }
                 if (j.Phase is not ("applying" or "starting")) continue;
                 using var worker = UpdateSecurity.Find(j.WorkerId, j.WorkerStarted, Path.Combine(job, j.RunnerName, "WinCalendar.exe"));
                 if (worker != null) return true;

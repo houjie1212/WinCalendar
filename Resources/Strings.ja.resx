@@ -504,4 +504,6 @@
   <data name="AddressDecryptFailed" xml:space="preserve"><value>購読アドレスを復号できません。再入力してください。</value></data>
   <data name="AddressMigrationFailed" xml:space="preserve"><value>購読アドレスの暗号化と移行に失敗しました。元の設定は保持されています。ファイルへのアクセスまたは Windows アカウントの問題を解決して再起動してください。</value></data>
   <data name="SettingsFormatUnsupported" xml:space="preserve"><value>この設定形式には対応していません。元のファイルは保持されています。対応するバージョンを使用してください。</value></data>
+  <data name="UpdateConfirmationFailed" xml:space="preserve"><value>更新後の起動確認に失敗しました。インストーラーで修復してください。確認前に設定は変更されていません。</value></data>
+  <data name="UpdateConfirming" xml:space="preserve"><value>更新後の起動を確認しています…</value></data>
 </root>

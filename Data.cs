@@ -78,7 +78,7 @@ public static class Store
     public static string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinCalendar");
     public static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
     public static string PathFor(string name) => Path.Combine(Root, name);
-    public static Settings Load()
+    public static Settings Load(bool migrate = true)
     {
         Directory.CreateDirectory(Root);
         if (!File.Exists(PathFor("settings.json"))) return new();
@@ -107,7 +107,7 @@ public static class Store
             }
         }
         // 先完整加密再替换，失败时不备份或覆盖旧明文文件。
-        if (format == 0)
+        if (format == 0 && migrate)
         {
             try { Save(s); }
             catch { throw new SettingsStorageException("AddressMigrationFailed"); }
