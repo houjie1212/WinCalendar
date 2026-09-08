@@ -1,6 +1,6 @@
 # WinCalendar
 
-Windows 11 25H2 x64 日历：点击系统时间打开，默认显示公历，支持自定义 ICS 日历；启用中国节假日订阅后显示节日名称和“休／班”标识。
+Windows 11 x64 日历：点击系统时间打开，默认显示公历，支持自定义 ICS 日历；启用中国节假日订阅后显示节日名称和“休／班”标识。
 
 ## 使用
 
@@ -99,7 +99,7 @@ dotnet bin/Debug/net8.0-windows/WinCalendar.dll --integration-check integration-
 
 ## 边界与验收
 
-- 时间入口采用 UI Automation 识别和鼠标钩子，不注入 Explorer，不先打开原生日历再隐藏。25H2 的时间按钮与通知按钮分开识别；Windows 后续更新仍可能改变控件结构。
+- 时间入口采用 UI Automation 识别和鼠标钩子，不注入 Explorer，不先打开原生日历再隐藏。按控件标识、类型和时间内容识别，支持原生时钟子窗口回退；不按 Windows 版本号分支。Windows 更新仍可能改变控件结构。
 - 原生接管必须实测：直接打开、无明显原生面板闪现、重复点击和外部点击关闭、Esc、通知铃铛、Win+N、Explorer 重启、多屏及不同 DPI。未测项目不能视为通过。
 - ICS 请求限制为 5 MiB、25 秒、最多 5 次 HTTPS 重定向；可视六周之外不展开日程。
 - 解析独立进程限制为 10 秒、256 MiB 和 10,000 条展开事件。超限视为刷新失败，保留上次缓存。
@@ -107,3 +107,5 @@ dotnet bin/Debug/net8.0-windows/WinCalendar.dll --integration-check integration-
 - 本项目未对可执行文件进行商业代码签名。
 
 第三方许可见 `THIRD-PARTY-NOTICES.md` 和 `Licenses`。
+
+兼容目标为 Windows 11 各版本 x64（安装最低构建 22000）。此前 25H2 版本已由用户实测；1.0.1 的任务栏改动需重新实机验收，23H2 及其他版本不能仅凭构建通过视为已验证。遇到入口未连接，请运行 `WinCalendar.exe --probe-clock clock-probe.txt`，提供结构诊断结果；诊断不输出控件名称或订阅链接。

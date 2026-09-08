@@ -142,7 +142,7 @@
     <value>System clock connected</value>
   </data>
   <data name="ClockMissing" xml:space="preserve">
-    <value>System clock not detected. Integration is not ready.</value>
+    <value>System clock not connected; retrying. Run --probe-clock for diagnostics.</value>
   </data>
   <data name="Language" xml:space="preserve">
     <value>Language follows Windows; formats follow regional settings.</value>

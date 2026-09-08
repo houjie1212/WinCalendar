@@ -142,7 +142,7 @@
     <value>系统时间入口已连接</value>
   </data>
   <data name="ClockMissing" xml:space="preserve">
-    <value>未检测到系统时间入口，接管尚未就绪。</value>
+    <value>系统时间入口未连接，正在重试；可运行 --probe-clock 诊断。</value>
   </data>
   <data name="Language" xml:space="preserve">
     <value>显示语言跟随 Windows，日期格式跟随区域设置。</value>

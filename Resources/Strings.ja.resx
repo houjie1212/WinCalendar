@@ -142,7 +142,7 @@
     <value>システム時計に接続済み</value>
   </data>
   <data name="ClockMissing" xml:space="preserve">
-    <value>システム時計を検出できません。連携は未準備です。</value>
+    <value>システム時計に未接続です。再試行中。--probe-clock で診断できます。</value>
   </data>
   <data name="Language" xml:space="preserve">
     <value>表示言語は Windows、日付形式は地域設定に従います。</value>

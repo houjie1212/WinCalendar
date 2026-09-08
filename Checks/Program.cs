@@ -21,6 +21,27 @@ L.Reload();
 Store.Root = Path.Combine(Path.GetTempPath(), "WinCalendarChecks-" + Guid.NewGuid().ToString("N"));
 try
 {
+    // 识别与命中使用纯数据检查，不改变当前任务栏或用户设置。
+    var bar = new System.Windows.Rect(-1920, 1000, 1920, 80);
+    var rect = new System.Windows.Rect(-150, 1010, 100, 50);
+    string Identify(string cls, string id, string text, bool button = true, bool hidden = false)
+        => ClockHook.CandidateReason(cls, id, text, button, rect, bar, hidden);
+    Check(Identify("SystemTray.DateTimeIcon", "", "") == "accepted", "明确时间控件标识");
+    Check(Identify("", "ClockButton", "") == "accepted", "时钟自动化标识");
+    Check(Identify("TrayClockWClass", "", "", false) == "accepted", "原生时钟回退");
+    foreach (var cls in new[] { "SystemTray.OmniButton", "SystemTray.OmniButtonLeft" })
+        Check(Identify(cls, "SystemTrayIcon", "13:25") == "accepted", "共享时间按钮 " + cls);
+    Check(Identify("SystemTray.OmniButtonRight", "SystemTrayIcon", "13:25") != "accepted", "通知按钮不接管");
+    Check(Identify("SystemTray.OmniButton", "SystemTrayIcon", "通知") != "accepted", "共享按钮必须包含时间");
+    Check(Identify("SystemTray.OmniButton", "SystemTrayIcon", "13:25", false) != "accepted", "共享容器不接管");
+    Check(Identify("SystemTray.DateTimeIcon", "", "", true, true) != "accepted", "隐藏时间控件不接管");
+    Check(ClockHook.CandidateReason("TrayClockWClass", "", "", false, System.Windows.Rect.Empty, bar, false) != "accepted", "空时钟范围拒绝");
+    var point = new System.Windows.Point(-100, 1030);
+    Check(ClockHook.HitTest(rect, bar, point, true, true), "负坐标显示器命中");
+    Check(!ClockHook.HitTest(rect, bar, point, true, false), "遮挡窗口点击不接管");
+    Check(!ClockHook.HitTest(rect, bar, point, false, true), "隐藏任务栏不接管");
+    Check(!ClockHook.HitTest(rect, new System.Windows.Rect(0, 0, 100, 50), point, true, true), "任务栏移动后旧范围失效");
+
     // 不访问真实卸载记录，使用临时目录验证卸载命令匹配。
     string uninstallDirectory = Path.Combine(Store.Root, "installed with spaces");
     Directory.CreateDirectory(uninstallDirectory);
@@ -43,9 +64,10 @@ try
     Check(UpdateService.AllowedUri(new Uri("https://release-assets.githubusercontent.com/file?token=abc"), true) &&
         !UpdateService.AllowedUri(new Uri("https://evil.example/file"), true), "更新重定向限制");
     Check(UpdateService.ReadRelease("{\"draft\":false,\"prerelease\":true}") == null, "更新忽略预发布");
-    var latestJson = "{\"draft\":false,\"prerelease\":false,\"tag_name\":\"v1.0.0\"}";
+    var latestJson = System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = false, tag_name = "v" + UpdateService.Current });
     Check(UpdateService.ReadRelease(latestJson)!.Version == UpdateService.Current, "更新同版本无需更新包");
-    Reject(() => UpdateService.ReadRelease("{\"draft\":false,\"prerelease\":false,\"tag_name\":\"v1.0.1\",\"assets\":[]}"), "更新缺失资产被拒绝");
+    var nextVersion = new Version(UpdateService.Current.Major, UpdateService.Current.Minor, UpdateService.Current.Build + 1);
+    Reject(() => UpdateService.ReadRelease(System.Text.Json.JsonSerializer.Serialize(new { draft = false, prerelease = false, tag_name = "v" + nextVersion, assets = Array.Empty<object>() })), "更新缺失资产被拒绝");
     foreach (var code in new[] { 404, 403, 429, 500, 200 })
     {
         var handler = new UpdateHttpStub(code, latestJson);

@@ -8,7 +8,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>WinCalendar</AssemblyName>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <RuntimeFrameworkVersion Condition="'$(SelfContained)' == 'true'">8.0.30</RuntimeFrameworkVersion>
   </PropertyGroup>
   <ItemGroup>
