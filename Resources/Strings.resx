@@ -498,4 +498,6 @@
   <data name="UninstallFailed" xml:space="preserve">
     <value>Unable to start the uninstaller. Try Windows Settings &gt; Apps &gt; Installed apps.</value>
   </data>
+  <data name="UpdateElevated" xml:space="preserve"><value>Run WinCalendar without administrator privileges before updating or recovering.</value></data>
+  <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>Update recovery data is invalid or uses an older format. Files were preserved. Repair using the installer.</value></data>
 </root>

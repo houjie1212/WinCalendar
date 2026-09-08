@@ -498,4 +498,6 @@
   <data name="UninstallFailed" xml:space="preserve">
     <value>無法啟動解除安裝程式，請嘗試透過 Windows 設定 → 應用程式 → 已安裝的應用程式解除安裝。</value>
   </data>
+  <data name="UpdateElevated" xml:space="preserve"><value>請以一般權限重新執行 WinCalendar 後再更新或復原。</value></data>
+  <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>更新復原記錄無效或為舊格式，檔案已保留。請使用安裝程式修復。</value></data>
 </root>

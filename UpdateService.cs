@@ -183,6 +183,7 @@ public static class UpdateService
 
     public static async Task<string> Prepare(UpdateRelease release, IProgress<double> progress, CancellationToken ct)
     {
+        UpdateSecurity.RequireNormalUser();
         var job = Path.Combine(Root, Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(job);
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);

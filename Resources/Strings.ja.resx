@@ -498,4 +498,6 @@
   <data name="UninstallFailed" xml:space="preserve">
     <value>アンインストールを開始できません。Windows の設定 → アプリ → インストールされているアプリから実行してください。</value>
   </data>
+  <data name="UpdateElevated" xml:space="preserve"><value>管理者権限を使わずに WinCalendar を再起動してから更新または復元してください。</value></data>
+  <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>更新の復元記録が無効か旧形式です。ファイルは保持されています。インストーラーで修復してください。</value></data>
 </root>

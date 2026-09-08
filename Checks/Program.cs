@@ -2,6 +2,20 @@ using System.Collections;
 using System.Globalization;
 using WinCalendar;
 
+// 隔离发行流程通过环境变量共享检查目录，不访问用户配置。
+if (Environment.GetEnvironmentVariable("WINCALENDAR_CHECK_ROOT") is string checkRoot) Store.Root = checkRoot;
+if (args.Length == 2 && args[0] is "--apply-update" or "--recover-update")
+{
+    Environment.ExitCode = UpdateInstaller.Worker(args[1], args[0] == "--recover-update"); return;
+}
+if (args.Length == 2 && args[0] == "--test-recover-parent")
+{
+    Environment.ExitCode = UpdateInstaller.ResumeIfNeeded() ? 0 : 1; return;
+}
+if (args.Length == 2 && args[0] == "--test-update-parent")
+{
+    UpdateInstaller.Launch(args[1]).GetAwaiter().GetResult(); return;
+}
 // 子进程模拟新版启动确认，不加载真实设置或接管时钟。
 if (args.Length == 2 && args[0] == "--updated")
 {
@@ -112,8 +126,40 @@ try
     File.WriteAllText(Path.Combine(payload, UpdateService.ManifestName), System.Text.Json.JsonSerializer.Serialize(managed));
     File.WriteAllText(Path.Combine(target, "personal.txt"), "keep");
     var journal = UpdateInstaller.PrepareFiles(job, target);
+    // 篡改检查只作用于隔离目录；失败不得改变私人附加文件。
+    string originalJournal = File.ReadAllText(UpdateInstaller.JournalPath(job));
+    var wrongTarget = System.Text.Json.JsonSerializer.Deserialize<UpdateJournal>(originalJournal)!;
+    wrongTarget.Target = target + "-other";
+    Reject(() => UpdateSecurity.Validate(wrongTarget, target), "更新拒绝篡改目标目录");
+    var wrongFiles = System.Text.Json.JsonSerializer.Deserialize<UpdateJournal>(originalJournal)!;
+    wrongFiles.Files = wrongFiles.Files.Append("personal.txt").ToArray();
+    Reject(() => UpdateSecurity.Validate(wrongFiles, target), "更新拒绝清单外文件");
+    wrongFiles = System.Text.Json.JsonSerializer.Deserialize<UpdateJournal>(originalJournal)!;
+    wrongFiles.OldFiles["../escape"] = new UpdateFile(0, new string('0', 64));
+    Reject(() => UpdateSecurity.Validate(wrongFiles, target), "恢复拒绝路径跳转");
+    var wrongPhase = System.Text.Json.JsonSerializer.Deserialize<UpdateJournal>(originalJournal)!;
+    wrongPhase.Phase = "unknown";
+    Reject(() => UpdateSecurity.Validate(wrongPhase, target), "更新拒绝非法阶段");
+    File.WriteAllText(UpdateInstaller.JournalPath(job), "{}");
+    Reject(() => UpdateInstaller.ReadJournal(job, target), "拒绝旧恢复格式");
+    File.WriteAllText(UpdateInstaller.JournalPath(job), new string(' ', 4 * 1024 * 1024 + 1));
+    Reject(() => UpdateInstaller.ReadJournal(job, target), "拒绝超大恢复记录");
+    File.WriteAllText(UpdateInstaller.JournalPath(job), originalJournal);
+    using (var self = System.Diagnostics.Process.GetCurrentProcess())
+        Reject(() => UpdateSecurity.Find(self.Id, self.StartTime.ToUniversalTime().Ticks, Path.Combine(target, "WinCalendar.exe")), "拒绝无关进程路径");
+    File.WriteAllText(Path.Combine(payload, "WinCalendar.dll"), "bad");
+    Reject(() => UpdateInstaller.InstallFiles(job, journal), "更新拒绝载荷摘要不符");
+    Check(File.ReadAllText(Path.Combine(target, "WinCalendar.exe")) == "old", "校验失败不替换文件");
+    File.WriteAllText(Path.Combine(payload, "WinCalendar.dll"), "new");
     UpdateInstaller.InstallFiles(job, journal);
     Check(File.ReadAllText(Path.Combine(target, "WinCalendar.exe")) == "new" && File.ReadAllText(Path.Combine(target, "personal.txt")) == "keep", "更新替换且保留额外文件");
+    var backupDll = Path.Combine(job, "backup", "WinCalendar.dll");
+    File.Delete(backupDll);
+    Reject(() => UpdateInstaller.Rollback(job, journal), "恢复拒绝缺失备份");
+    File.WriteAllText(backupDll, "bad");
+    Reject(() => UpdateInstaller.Rollback(job, journal), "恢复拒绝备份摘要不符");
+    Check(File.ReadAllText(Path.Combine(target, "WinCalendar.exe")) == "new", "备份校验失败不部分回滚");
+    File.WriteAllText(backupDll, "old");
     UpdateInstaller.Rollback(job, journal);
     UpdateInstaller.Rollback(job, journal);
     Check(File.ReadAllText(Path.Combine(target, "WinCalendar.exe")) == "old" && journal.Phase == "rolledback", "更新中断恢复可重复执行");
@@ -123,11 +169,22 @@ try
     UpdateInstaller.Rollback(job, journal);
     Check(File.ReadAllText(Path.Combine(target, "WinCalendar.exe")) == "old", "更新部分替换失败后回滚");
 
-    // 使用检查程序自身的 apphost 模拟新旧版本，运行真实更新工作流程。
-    foreach (bool failStartup in new[] { false, true })
+    var link = Path.Combine(updateTemp, "directory-link");
+    try
     {
+        Directory.CreateSymbolicLink(link, target);
+        Reject(() => UpdateSecurity.VerifyManifest(link, journal.OldFiles), "恢复拒绝目录链接");
+    }
+    catch (Exception e) when (e is UnauthorizedAccessException || (e is IOException && (e.HResult & 0xffff) == 1314)) { Console.WriteLine("SKIP 目录链接实测：当前环境不允许创建符号链接"); }
+    finally { if (Directory.Exists(link)) Directory.Delete(link); }
+
+    // 使用检查程序自身的 apphost 模拟新旧版本，运行真实更新工作流程。
+    foreach (int updateMode in new[] { 0, 1, 2 })
+    {
+        bool failStartup = updateMode == 1;
+        bool recovering = updateMode == 2;
         string transaction = Path.Combine(UpdateService.Root, Guid.NewGuid().ToString("N"));
-        string installed = Path.Combine(updateTemp, "process-" + failStartup);
+        string installed = Path.Combine(updateTemp, "process-" + updateMode);
         string incoming = Path.Combine(transaction, "payload");
         Directory.CreateDirectory(installed); Directory.CreateDirectory(incoming);
         foreach (string sourceFile in Directory.GetFiles(AppContext.BaseDirectory, "*", SearchOption.AllDirectories))
@@ -144,7 +201,7 @@ try
             var listing = Directory.GetFiles(destination, "*", SearchOption.AllDirectories).Select(p => Path.GetRelativePath(destination, p).Replace('\\', '/')).ToArray();
             File.WriteAllText(Path.Combine(destination, UpdateService.ManifestName), System.Text.Json.JsonSerializer.Serialize(listing));
         }
-        if (!failStartup)
+        if (updateMode == 0)
         {
             string validZip = Path.Combine(updateTemp, "valid.zip");
             System.IO.Compression.ZipFile.CreateFromDirectory(incoming, validZip);
@@ -153,11 +210,25 @@ try
             Reject(() => UpdateService.Extract(validZip, Path.Combine(updateTemp, "wrong-version"), new Version(99, 0, 0)), "更新包内版本不符");
         }
         if (failStartup) File.WriteAllText(Path.Combine(installed, "skip-ack"), "test");
-        var transactionJournal = UpdateInstaller.PrepareFiles(transaction, installed);
-        using var readySignal = new EventWaitHandle(false, EventResetMode.ManualReset, "Local\\WinCalendar.Update." + Path.GetFileName(transaction) + ".ready");
-        int result = UpdateInstaller.Worker(transaction, false);
-        var finished = System.Text.Json.JsonSerializer.Deserialize<UpdateJournal>(File.ReadAllText(UpdateInstaller.JournalPath(transaction)))!;
-        Check(failStartup ? result == 1 && finished.Phase == "rolledback" : result == 0 && finished.Phase == "complete", "更新工作进程启动确认与回滚 " + failStartup);
+        if (recovering)
+        {
+            var interrupted = UpdateInstaller.PrepareFiles(transaction, installed);
+            UpdateInstaller.InstallFiles(transaction, interrupted);
+        }
+        var info = new System.Diagnostics.ProcessStartInfo(Path.Combine(installed, "WinCalendar.exe")) { UseShellExecute = false, CreateNoWindow = true, WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden };
+        info.Environment["WINCALENDAR_CHECK_ROOT"] = Store.Root;
+        info.ArgumentList.Add(recovering ? "--test-recover-parent" : "--test-update-parent"); info.ArgumentList.Add(transaction);
+        using var parent = System.Diagnostics.Process.Start(info)!;
+        Check(parent.WaitForExit(30000) && parent.ExitCode == 0, "更新父进程验证及正常退出 " + failStartup);
+        UpdateJournal? finished = null;
+        var deadline = DateTime.UtcNow.AddSeconds(55);
+        while (DateTime.UtcNow < deadline)
+        {
+            try { finished = UpdateInstaller.ReadJournal(transaction, installed); } catch (IOException) { }
+            if (finished?.Phase is "complete" or "rolledback") break;
+            Thread.Sleep(100);
+        }
+        Check(finished?.Phase == (failStartup || recovering ? "rolledback" : "complete"), "更新工作进程启动确认、回滚及中断恢复 " + updateMode);
         // 等待测试子进程退出，之后才能清理临时程序集。
         Thread.Sleep(1800);
     }

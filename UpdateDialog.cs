@@ -63,6 +63,7 @@ public sealed class UpdateDialog : Window
         working = true; install.IsEnabled = false; progress.Visibility = Visibility.Visible;
         try
         {
+            UpdateSecurity.RequireNormalUser();
             Status(L.T("UpdateDownloading"));
             var job = await UpdateService.Prepare(release, new Progress<double>(value => progress.Value = value), cancel.Token);
             cancel.Token.ThrowIfCancellationRequested();

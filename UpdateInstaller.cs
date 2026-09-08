@@ -11,6 +11,12 @@ namespace WinCalendar;
 // 恢复记录先于文件变更落盘，备份在新版确认启动前一直保留。
 public sealed class UpdateJournal
 {
+    public int Format { get; set; }
+    public System.Collections.Generic.Dictionary<string, UpdateFile> OldFiles { get; set; } = new();
+    public System.Collections.Generic.Dictionary<string, UpdateFile> NewFiles { get; set; } = new();
+    public System.Collections.Generic.Dictionary<string, UpdateFile> RunnerFiles { get; set; } = new();
+    public string RunnerName { get; set; } = "worker";
+    public bool RecoveryRunner { get; set; }
     public string Target { get; set; } = "";
     public string Phase { get; set; } = "prepared";
     public string[] Files { get; set; } = Array.Empty<string>();
@@ -31,7 +37,8 @@ public static class UpdateInstaller
     private static string Signal(string job, string kind) => "Local\\WinCalendar.Update." + Path.GetFileName(job) + "." + kind;
     public static void WriteJournal(string job, UpdateJournal journal)
     {
-        var path = JournalPath(job);
+        var path = UpdateService.SafePath(job, "journal.json");
+        UpdateService.SafePath(job, "journal.json.tmp");
         using (var file = new FileStream(path + ".tmp", FileMode.Create, FileAccess.Write, FileShare.None, 4096, FileOptions.WriteThrough))
         {
             JsonSerializer.Serialize(file, journal); file.Flush(true);
@@ -48,19 +55,20 @@ public static class UpdateInstaller
         return job;
     }
 
-    private static UpdateJournal ReadJournal(string job)
+    public static UpdateJournal ReadJournal(string job, string? target = null)
     {
-        var j = JsonSerializer.Deserialize<UpdateJournal>(File.ReadAllText(JournalPath(job))) ?? throw new InvalidDataException();
-        var target = Path.GetFullPath(j.Target).TrimEnd(Path.DirectorySeparatorChar);
-        if (target.Length < 4 || target.StartsWith(Path.GetFullPath(UpdateService.Root), StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException();
-        if (j.Files.Length > 10001 || j.Files.Distinct(StringComparer.OrdinalIgnoreCase).Count() != j.Files.Length || j.Existing.Except(j.Files, StringComparer.OrdinalIgnoreCase).Any()) throw new InvalidDataException();
-        foreach (var name in j.Files) UpdateService.SafePath(target, name);
+        using var file = new FileStream(UpdateService.SafePath(job, "journal.json"), FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+        if (file.Length > 4 * 1024 * 1024) throw new InvalidDataException();
+        var j = JsonSerializer.Deserialize<UpdateJournal>(file) ?? throw new InvalidDataException();
+        if (j.Format != 1) throw new InvalidDataException();
+        if (target != null) UpdateSecurity.Validate(j, target);
         return j;
     }
 
     // 仅发行文件参与备份和替换；用户额外文件遇到同名新文件时拒绝覆盖。
     public static UpdateJournal PrepareFiles(string job, string target)
     {
+        UpdateSecurity.RequireNormalUser();
         target = Path.GetFullPath(target);
         var oldFiles = UpdateService.ReadManifest(target);
         var newFiles = UpdateService.ReadManifest(Path.Combine(job, "payload"));
@@ -74,13 +82,15 @@ public static class UpdateInstaller
         string probe = Path.Combine(target, ".wincalendar-write-" + Guid.NewGuid().ToString("N"));
         using (File.Create(probe)) { }
         File.Delete(probe);
-        var j = new UpdateJournal { Target = target, Files = names, Existing = names.Where(n => File.Exists(UpdateService.SafePath(target, n))).ToArray() };
+        var j = new UpdateJournal { Format = 1, OldFiles = UpdateSecurity.Snapshot(target), NewFiles = UpdateSecurity.Snapshot(Path.Combine(job, "payload")), Target = target, Files = names, Existing = names.Where(n => File.Exists(UpdateService.SafePath(target, n))).ToArray() };
         foreach (var name in oldFiles)
         {
             string dest = UpdateService.SafePath(Path.Combine(job, "worker"), name);
             Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
             File.Copy(UpdateService.SafePath(target, name), dest);
         }
+        j.RunnerFiles = j.OldFiles;
+        UpdateSecurity.VerifyManifest(Path.Combine(job, "worker"), j.RunnerFiles);
         WriteJournal(job, j);
         return j;
     }
@@ -94,6 +104,7 @@ public static class UpdateInstaller
 
     public static async Task Launch(string job)
     {
+        UpdateSecurity.RequireNormalUser();
         ValidateJob(job);
         var j = await Task.Run(() => PrepareFiles(job, AppContext.BaseDirectory));
         using var parent = Process.GetCurrentProcess();
@@ -104,23 +115,19 @@ public static class UpdateInstaller
         if (!await Task.Run(() => ready.WaitOne(TimeSpan.FromSeconds(20)))) throw new UpdateException("UpdateFailed");
     }
 
-    // 进程 ID 会重用，同时校验启动时间，避免等待或终止无关进程。
-    private static Process? Find(int id, long started)
-    {
-        if (id <= 0 || started <= 0) return null;
-        try { var p = Process.GetProcessById(id); if (p.StartTime.ToUniversalTime().Ticks == started) return p; p.Dispose(); }
-        catch (ArgumentException) { }
-        return null;
-    }
-
     public static void InstallFiles(string job, UpdateJournal j)
     {
+        UpdateSecurity.RequireNormalUser();
+        UpdateSecurity.Validate(j, j.Target);
+        UpdateSecurity.VerifyManifest(j.Target, j.OldFiles);
+        UpdateSecurity.VerifyManifest(Path.Combine(job, "payload"), j.NewFiles);
         string backup = Path.Combine(job, "backup");
         foreach (var name in j.Existing)
         {
             var path = UpdateService.SafePath(backup, name); Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.Copy(UpdateService.SafePath(j.Target, name), path, true);
         }
+        UpdateSecurity.VerifyManifest(backup, j.OldFiles);
         j.Phase = "applying"; WriteJournal(job, j);
         var fresh = UpdateService.ReadManifest(Path.Combine(job, "payload"));
         foreach (var name in fresh)
@@ -129,11 +136,15 @@ public static class UpdateInstaller
             File.Copy(UpdateService.SafePath(Path.Combine(job, "payload"), name), target, true);
         }
         foreach (var name in j.Existing.Except(fresh, StringComparer.OrdinalIgnoreCase)) File.Delete(UpdateService.SafePath(j.Target, name));
+        UpdateSecurity.VerifyManifest(j.Target, j.NewFiles);
         j.Phase = "starting"; WriteJournal(job, j);
     }
 
     public static void Rollback(string job, UpdateJournal j)
     {
+        UpdateSecurity.RequireNormalUser();
+        UpdateSecurity.Validate(j, j.Target);
+        UpdateSecurity.VerifyManifest(Path.Combine(job, "backup"), j.OldFiles);
         foreach (var name in j.Existing)
         {
             var path = UpdateService.SafePath(j.Target, name); Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -146,19 +157,33 @@ public static class UpdateInstaller
     public static int Worker(string job, bool recover)
     {
         UpdateJournal? j = null;
+        bool mayRecover = false;
         using var mutex = new Mutex(false, MutexName);
         bool held = false;
         try
         {
+            UpdateSecurity.RequireNormalUser();
             try { held = mutex.WaitOne(0); } catch (AbandonedMutexException) { held = true; }
             if (!held) return 1;
-            job = ValidateJob(job); j = ReadJournal(job);
+            job = ValidateJob(job);
+            var candidate = ReadJournal(job);
+            using var origin = UpdateSecurity.Find(candidate.ParentId, candidate.ParentStarted, Path.Combine(candidate.Target, "WinCalendar.exe")) ?? throw new InvalidDataException();
+            string actualTarget = Path.GetDirectoryName(origin.MainModule!.FileName)!;
+            UpdateSecurity.Validate(candidate, actualTarget);
+            if (recover != candidate.RecoveryRunner || (!recover && candidate.Phase != "prepared") ||
+                (recover && candidate.Phase is not ("applying" or "starting"))) throw new InvalidDataException();
+            string runner = Path.Combine(job, candidate.RunnerName);
+            if (!UpdateSecurity.SamePath(AppContext.BaseDirectory, runner)) throw new InvalidDataException();
+            UpdateSecurity.VerifyManifest(runner, candidate.RunnerFiles);
+            if (recover) UpdateSecurity.VerifyManifest(Path.Combine(job, "backup"), candidate.OldFiles);
+            else { UpdateSecurity.VerifyManifest(actualTarget, candidate.OldFiles); UpdateSecurity.VerifyManifest(Path.Combine(job, "payload"), candidate.NewFiles); }
+            j = candidate;
             using var self = Process.GetCurrentProcess(); j.WorkerId = self.Id; j.WorkerStarted = self.StartTime.ToUniversalTime().Ticks; WriteJournal(job, j);
             if (!recover)
             {
                 using var ready = EventWaitHandle.OpenExisting(Signal(job, "ready")); ready.Set();
-                using var parent = Find(j.ParentId, j.ParentStarted);
-                if (parent != null && !parent.WaitForExit(30000)) return 1;
+                if (!origin.WaitForExit(30000)) return 1;
+                mayRecover = true;
                 InstallFiles(job, j);
                 using var ack = new EventWaitHandle(false, EventResetMode.ManualReset, Signal(job, "ack"));
                 using var child = Start(Path.Combine(j.Target, "WinCalendar.exe"), "--updated", job);
@@ -169,18 +194,20 @@ public static class UpdateInstaller
                 j.Phase = "complete"; WriteJournal(job, j);
                 return 0;
             }
+            using (var ready = EventWaitHandle.OpenExisting(Signal(job, "ready"))) ready.Set();
             // 恢复可重复执行，保留备份直到明确完成。
-            using (var parent = Find(j.ParentId, j.ParentStarted))
-                if (parent != null && !parent.WaitForExit(30000)) return 1;
+            if (!origin.WaitForExit(30000)) return 1;
+            mayRecover = true;
             if (j.Phase is "applying" or "starting") RestoreAndStart(job, j);
             return 0;
         }
-        catch
+        catch (Exception error)
         {
+            if (error is InvalidDataException or UpdateException) return 1;
             try
             {
-                if (j?.Phase is "applying" or "starting") RestoreAndStart(job, j);
-                else if (j?.Phase == "prepared") Start(Path.Combine(j.Target, "WinCalendar.exe"), "--update-failed").Dispose();
+                if (mayRecover && j?.Phase is "applying" or "starting") RestoreAndStart(job, j);
+                else if (mayRecover && j?.Phase == "prepared") { UpdateSecurity.VerifyManifest(j.Target, j.OldFiles); Start(Path.Combine(j.Target, "WinCalendar.exe"), "--update-failed").Dispose(); }
             }
             catch { }
             return 1;
@@ -190,7 +217,9 @@ public static class UpdateInstaller
 
     private static void RestoreAndStart(string job, UpdateJournal j)
     {
-        using var child = Find(j.ChildId, j.ChildStarted);
+        UpdateSecurity.Validate(j, j.Target);
+        UpdateSecurity.VerifyManifest(Path.Combine(job, "backup"), j.OldFiles);
+        using var child = UpdateSecurity.Find(j.ChildId, j.ChildStarted, Path.Combine(j.Target, "WinCalendar.exe"));
         if (child != null && !child.HasExited) { child.Kill(); if (!child.WaitForExit(10000)) throw new IOException(); }
         Rollback(job, j);
         Start(Path.Combine(j.Target, "WinCalendar.exe"), "--update-failed").Dispose();
@@ -199,7 +228,8 @@ public static class UpdateInstaller
     public static void Acknowledge(string job)
     {
         ValidateJob(job);
-        var j = ReadJournal(job);
+        UpdateSecurity.RequireNormalUser();
+        var j = ReadJournal(job, AppContext.BaseDirectory);
         if (!string.Equals(Path.GetFullPath(j.Target).TrimEnd('\\'), AppContext.BaseDirectory.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase) || j.Phase != "starting") throw new InvalidDataException();
         using var ack = EventWaitHandle.OpenExisting(Signal(job, "ack")); ack.Set();
     }
@@ -208,21 +238,43 @@ public static class UpdateInstaller
     public static bool ResumeIfNeeded()
     {
         if (!Directory.Exists(UpdateService.Root)) return false;
+        try { UpdateSecurity.RequireNormalUser(); }
+        catch (UpdateException e) { System.Windows.MessageBox.Show(L.T(e.Key), "WinCalendar"); return false; }
+        bool invalid = false;
         foreach (var job in Directory.GetDirectories(UpdateService.Root))
         {
             if (!File.Exists(JournalPath(job))) continue;
-            UpdateJournal j;
-            try { j = ReadJournal(ValidateJob(job)); }
-            catch (Exception e) when (e is IOException or JsonException or ArgumentException) { continue; }
-            if (!string.Equals(j.Target.TrimEnd('\\'), AppContext.BaseDirectory.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase) || j.Phase is not ("applying" or "starting")) continue;
-            using var worker = Find(j.WorkerId, j.WorkerStarted);
-            if (worker == null)
+            try
             {
-                using var parent = Process.GetCurrentProcess(); j.ParentId = parent.Id; j.ParentStarted = parent.StartTime.ToUniversalTime().Ticks; WriteJournal(job, j);
-                Start(Path.Combine(job, "worker", "WinCalendar.exe"), "--recover-update", job).Dispose();
+                var j = ReadJournal(ValidateJob(job));
+                if (!UpdateSecurity.SamePath(j.Target, AppContext.BaseDirectory)) continue;
+                UpdateSecurity.Validate(j, AppContext.BaseDirectory);
+                if (j.Phase is not ("applying" or "starting")) continue;
+                using var worker = UpdateSecurity.Find(j.WorkerId, j.WorkerStarted, Path.Combine(job, j.RunnerName, "WinCalendar.exe"));
+                if (worker != null) return true;
+                UpdateSecurity.VerifyManifest(Path.Combine(job, "backup"), j.OldFiles);
+                // 只复制当前正在运行的发行文件，绝不启动上次留下的工作程序。
+                j.RunnerName = "recovery-" + Guid.NewGuid().ToString("N");
+                var runner = Path.Combine(job, j.RunnerName);
+                j.RunnerFiles = UpdateSecurity.Snapshot(AppContext.BaseDirectory);
+                foreach (var name in j.RunnerFiles.Keys)
+                {
+                    var destination = UpdateService.SafePath(runner, name);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    File.Copy(UpdateService.SafePath(AppContext.BaseDirectory, name), destination);
+                }
+                UpdateSecurity.VerifyManifest(runner, j.RunnerFiles);
+                using var parent = Process.GetCurrentProcess();
+                j.ParentId = parent.Id; j.ParentStarted = parent.StartTime.ToUniversalTime().Ticks; j.RecoveryRunner = true;
+                WriteJournal(job, j);
+                using var ready = new EventWaitHandle(false, EventResetMode.ManualReset, Signal(job, "ready"));
+                using var launched = Start(Path.Combine(runner, "WinCalendar.exe"), "--recover-update", job);
+                if (!ready.WaitOne(TimeSpan.FromSeconds(20))) throw new InvalidDataException();
+                return true;
             }
-            return true;
+            catch { invalid = true; }
         }
+        if (invalid) System.Windows.MessageBox.Show(L.T("UpdateUnsafeRecovery"), "WinCalendar");
         return false;
     }
 }
