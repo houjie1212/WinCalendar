@@ -148,7 +148,7 @@
     <value>Language follows Windows; formats follow regional settings.</value>
   </data>
   <data name="Privacy" xml:space="preserve">
-    <value>Links stay on this computer. Subscription text is shown unchanged.</value>
+    <value>Subscription addresses are encrypted for the current Windows user. Moving settings to another user or computer may require entering addresses again. Calendar caches remain unencrypted.</value>
   </data>
   <data name="NewYear" xml:space="preserve">
     <value>New Year's Day</value>
@@ -501,4 +501,7 @@
   <data name="UpdateElevated" xml:space="preserve"><value>Run WinCalendar without administrator privileges before updating or recovering.</value></data>
   <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>Update recovery data is invalid or uses an older format. Files were preserved. Repair using the installer.</value></data>
   <data name="SubscriptionBlocked" xml:space="preserve"><value>Subscription blocked: only public HTTPS addresses are allowed. Proxy connections are disabled.</value></data>
+  <data name="AddressDecryptFailed" xml:space="preserve"><value>Subscription address cannot be decrypted. Please enter it again.</value></data>
+  <data name="AddressMigrationFailed" xml:space="preserve"><value>Could not encrypt and migrate subscription addresses. The original settings were preserved. Resolve the file access or Windows account issue and restart.</value></data>
+  <data name="SettingsFormatUnsupported" xml:space="preserve"><value>This settings format is not supported. The file was preserved. Use a compatible version.</value></data>
 </root>

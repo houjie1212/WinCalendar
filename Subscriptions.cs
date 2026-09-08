@@ -134,7 +134,7 @@ public sealed class Subscriptions
             {
                 string cache = Store.PathFor(source.Id + ".ics"), pending = Store.PathFor(source.Id + ".pending");
                 List<AgendaEvent>? parsed = null;
-                if (network)
+                if (network && !source.UrlUnreadable)
                 {
                     try
                     {

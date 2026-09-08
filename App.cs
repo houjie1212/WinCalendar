@@ -47,7 +47,7 @@ public sealed class App : Application
         catch (Exception e)
         {
             // 不展示可能包含私人链接的异常文本。
-            MessageBox.Show(L.T("Fatal") + "\n" + e.GetType().Name, "WinCalendar", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(e is SettingsStorageException storage ? L.T(storage.Key) : L.T("Fatal") + "\n" + e.GetType().Name, "WinCalendar", MessageBoxButton.OK, MessageBoxImage.Error);
             return 1;
         }
         finally { app.instance.ReleaseMutex(); app.instance.Dispose(); }

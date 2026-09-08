@@ -60,6 +60,7 @@ public sealed class SettingsWindow : Window
             AutomationProperties.SetName(name, source.Name + " " + L.T("Enabled"));
             name.Checked += (_, _) => source.Enabled = true; name.Unchecked += (_, _) => source.Enabled = false;
             row.Children.Add(name); body.Children.Add(row);
+            if (source.UrlUnreadable) body.Children.Add(Ui.Text(L.T("AddressDecryptFailed"), 11));
             if (source.Blocked || live.Sources.Any(x => x.Id == source.Id && x.Blocked)) body.Children.Add(Ui.Text(L.T("SubscriptionBlocked"), 11));
             body.Children.Add(Ui.Text(L.T("LastSuccess") + ": " + (source.LastSuccess?.LocalDateTime.ToString("g", L.Format) ?? L.T("Never")), 11));
         }
@@ -160,6 +161,7 @@ public sealed class SettingsWindow : Window
         var w = Ui.Dialog(this, original == null ? "Add" : "Edit");
         var panel = new StackPanel { Margin = new Thickness(20) };
         var name = new TextBox { Text = initial?.Name ?? "", Margin = new Thickness(0, 4, 0, 12) };
+        if (initial?.UrlUnreadable == true) panel.Children.Add(Ui.Text(L.T("AddressDecryptFailed"), 12));
         var url = new TextBox { Text = initial?.Url ?? "", Margin = new Thickness(0, 4, 0, 12), TextWrapping = TextWrapping.Wrap, MaxHeight = 110, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         AutomationProperties.SetName(name, L.T("Name")); AutomationProperties.SetName(url, L.T("Url"));
         panel.Children.Add(Ui.Label("Name")); panel.Children.Add(name);
@@ -207,6 +209,7 @@ public sealed class SettingsWindow : Window
             // 更换链接使用新缓存键，失败时不会误显示旧链接的日程。
             if (source.Url != uri.AbsoluteUri) { source.Id = Guid.NewGuid().ToString("N"); source.LastSuccess = null; }
             source.Kind = kind.SelectedIndex == 1 ? SubscriptionKind.ChinaHolidays : SubscriptionKind.Ordinary;
+            source.ProtectedUrl = ""; source.UrlUnreadable = false;
             source.Name = name.Text.Trim(); source.Url = uri.AbsoluteUri; source.Color = colors[color.SelectedIndex];
             if (original == null) draft.Sources.Add(source);
             w.DialogResult = true;

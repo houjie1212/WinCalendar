@@ -8,6 +8,8 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Nodes;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,6 +22,9 @@ public sealed class Subscription
     public string Id { get; set; } = Guid.NewGuid().ToString("N");
     public string Name { get; set; } = "";
     public string Url { get; set; } = "";
+    // 仅解密失败时保留原密文；内存草稿复制需要保留这两个字段。
+    public string ProtectedUrl { get; set; } = "";
+    public bool UrlUnreadable { get; set; }
     public string Color { get; set; } = "#2563EB";
     public SubscriptionKind Kind { get; set; }
     public bool Enabled { get; set; } = true;
@@ -64,6 +69,10 @@ public sealed class Settings
     public int? FirstDay { get; set; }
     public bool ShowChineseLunar { get; set; }
 }
+public sealed class SettingsStorageException(string key) : IOException
+{
+    public string Key { get; } = key;
+}
 public static class Store
 {
     public static string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinCalendar");
@@ -73,17 +82,81 @@ public static class Store
     {
         Directory.CreateDirectory(Root);
         if (!File.Exists(PathFor("settings.json"))) return new();
-        // 损坏配置不静默覆盖，调用方展示错误后退出，方便用户恢复私人订阅。
-        var s = JsonSerializer.Deserialize<Settings>(File.ReadAllText(PathFor("settings.json")), Json) ?? throw new InvalidDataException();
+        var document = ReadDocument(PathFor("settings.json"));
+        int format = Format(document);
+        var sources = document["Sources"] as JsonArray;
+        if (sources != null && sources.Any(n => n is not JsonObject ||
+            (format == 1 ? ((JsonObject)n).ContainsKey("Url") : ((JsonObject)n).ContainsKey("ProtectedUrl")))) throw new InvalidDataException();
+        var s = document.Deserialize<Settings>(Json) ?? throw new InvalidDataException();
+        Validate(s);
+        foreach (var source in s.Sources)
+        {
+            source.UrlUnreadable = false;
+            if (format == 0) continue;
+            source.Url = "";
+            try
+            {
+                var plain = ProtectedData.Unprotect(Convert.FromBase64String(source.ProtectedUrl), null, DataProtectionScope.CurrentUser);
+                try { source.Url = new UTF8Encoding(false, true).GetString(plain); }
+                finally { CryptographicOperations.ZeroMemory(plain); }
+                source.ProtectedUrl = "";
+            }
+            catch (Exception e) when (e is CryptographicException or FormatException or ArgumentException)
+            {
+                source.UrlUnreadable = true;
+            }
+        }
+        // 先完整加密再替换，失败时不备份或覆盖旧明文文件。
+        if (format == 0)
+        {
+            try { Save(s); }
+            catch { throw new SettingsStorageException("AddressMigrationFailed"); }
+        }
+        return s;
+    }
+    private static JsonObject ReadDocument(string path) => JsonNode.Parse(File.ReadAllText(path),
+        new JsonNodeOptions { PropertyNameCaseInsensitive = true }) as JsonObject ?? throw new InvalidDataException();
+    private static int Format(JsonObject document)
+    {
+        if (!document.ContainsKey("Format")) return 0;
+        if (document["Format"] is JsonValue value && value.TryGetValue<int>(out int format) && format == 1) return format;
+        throw new SettingsStorageException("SettingsFormatUnsupported");
+    }
+    private static void Validate(Settings s)
+    {
         s.Sources ??= new();
         s.RefreshMinutes = Math.Clamp(s.RefreshMinutes, 5, 1440);
         if (s.FirstDay is < 0 or > 6) s.FirstDay = null;
         foreach (var source in s.Sources)
-            if (!Guid.TryParseExact(source.Id, "N", out _)) throw new InvalidDataException();
+            if (source == null || source.Url == null || source.ProtectedUrl == null || !Guid.TryParseExact(source.Id, "N", out _)) throw new InvalidDataException();
         if (s.Sources.Select(x => x.Id).Distinct().Count() != s.Sources.Count) throw new InvalidDataException();
-        return s;
     }
-    public static void Save(Settings settings) => Write(PathFor("settings.json"), JsonSerializer.Serialize(settings, Json));
+    private static string ProtectAddress(string address)
+    {
+        var plain = Encoding.UTF8.GetBytes(address);
+        try { return Convert.ToBase64String(ProtectedData.Protect(plain, null, DataProtectionScope.CurrentUser)); }
+        finally { CryptographicOperations.ZeroMemory(plain); }
+    }
+    // 加密仅用于落盘，不影响草稿比较；可注入失败的加密函数用于隔离检查。
+    public static void Save(Settings settings, Func<string, string>? protect = null)
+    {
+        string path = PathFor("settings.json");
+        if (File.Exists(path)) Format(ReadDocument(path)); // 未知或损坏配置禁止后台覆盖。
+        Validate(settings);
+        var document = JsonSerializer.SerializeToNode(settings, Json)!.AsObject();
+        document["Format"] = 1;
+        var sources = document["Sources"]!.AsArray();
+        for (int i = 0; i < settings.Sources.Count; i++)
+        {
+            var source = settings.Sources[i];
+            var saved = sources[i]!.AsObject();
+            saved.Remove("Url"); saved.Remove("UrlUnreadable");
+            saved["ProtectedUrl"] = source.UrlUnreadable ? source.ProtectedUrl : (protect ?? ProtectAddress)(source.Url);
+        }
+        // 临时文件中也只有密文；替换失败仍保留原配置。
+        try { Write(path, document.ToJsonString(Json)); }
+        finally { try { File.Delete(path + ".tmp"); } catch { } }
+    }
     public static void Write(string path, string text)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

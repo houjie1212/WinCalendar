@@ -148,7 +148,7 @@
     <value>顯示語言跟隨 Windows，日期格式跟隨區域設定。</value>
   </data>
   <data name="Privacy" xml:space="preserve">
-    <value>連結儲存於本機，訂閱內容依原文顯示。</value>
+    <value>訂閱位址使用目前 Windows 使用者加密。跨使用者或電腦複製設定後可能需要重新填寫位址；行程快取仍為明文。</value>
   </data>
   <data name="NewYear" xml:space="preserve">
     <value>元旦</value>
@@ -501,4 +501,7 @@
   <data name="UpdateElevated" xml:space="preserve"><value>請以一般權限重新執行 WinCalendar 後再更新或復原。</value></data>
   <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>更新復原記錄無效或為舊格式，檔案已保留。請使用安裝程式修復。</value></data>
   <data name="SubscriptionBlocked" xml:space="preserve"><value>訂閱已被安全封鎖：僅允許公網 HTTPS 位址，不使用代理。</value></data>
+  <data name="AddressDecryptFailed" xml:space="preserve"><value>訂閱位址無法解密，請重新填寫。</value></data>
+  <data name="AddressMigrationFailed" xml:space="preserve"><value>訂閱位址加密遷移失敗，原設定已保留。請解決檔案存取或 Windows 帳戶問題後重新啟動。</value></data>
+  <data name="SettingsFormatUnsupported" xml:space="preserve"><value>不支援此設定格式，原檔案已保留。請使用相容版本。</value></data>
 </root>

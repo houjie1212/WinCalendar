@@ -148,7 +148,7 @@
     <value>表示言語は Windows、日付形式は地域設定に従います。</value>
   </data>
   <data name="Privacy" xml:space="preserve">
-    <value>リンクはこの端末に保存され、購読内容は原文で表示されます。</value>
+    <value>購読アドレスは現在の Windows ユーザー用に暗号化されます。別のユーザーや PC に設定をコピーした場合、再入力が必要になることがあります。予定のキャッシュは暗号化されません。</value>
   </data>
   <data name="NewYear" xml:space="preserve">
     <value>元日</value>
@@ -501,4 +501,7 @@
   <data name="UpdateElevated" xml:space="preserve"><value>管理者権限を使わずに WinCalendar を再起動してから更新または復元してください。</value></data>
   <data name="UpdateUnsafeRecovery" xml:space="preserve"><value>更新の復元記録が無効か旧形式です。ファイルは保持されています。インストーラーで修復してください。</value></data>
   <data name="SubscriptionBlocked" xml:space="preserve"><value>購読をブロックしました。公開 HTTPS アドレスのみ接続でき、プロキシは使用しません。</value></data>
+  <data name="AddressDecryptFailed" xml:space="preserve"><value>購読アドレスを復号できません。再入力してください。</value></data>
+  <data name="AddressMigrationFailed" xml:space="preserve"><value>購読アドレスの暗号化と移行に失敗しました。元の設定は保持されています。ファイルへのアクセスまたは Windows アカウントの問題を解決して再起動してください。</value></data>
+  <data name="SettingsFormatUnsupported" xml:space="preserve"><value>この設定形式には対応していません。元のファイルは保持されています。対応するバージョンを使用してください。</value></data>
 </root>

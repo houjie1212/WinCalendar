@@ -21,6 +21,13 @@ if (args.Length == 1 && args[0] == "--check-public-feeds")
 
 // 隔离发行流程通过环境变量共享检查目录，不访问用户配置。
 if (Environment.GetEnvironmentVariable("WINCALENDAR_CHECK_ROOT") is string checkRoot) Store.Root = checkRoot;
+// 独立进程只返回摘要，验证重启可解密且不在命令行输出地址。
+if (args.Length == 1 && args[0] == "--check-encrypted-settings")
+{
+    var restored = Store.Load();
+    Console.WriteLine(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(restored.Sources[0].Url))));
+    return;
+}
 if (args.Length == 2 && args[0] is "--apply-update" or "--recover-update")
 {
     Environment.ExitCode = UpdateInstaller.Worker(args[1], args[0] == "--recover-update"); return;
@@ -52,6 +59,73 @@ L.Reload();
 Store.Root = Path.Combine(Path.GetTempPath(), "WinCalendarChecks-" + Guid.NewGuid().ToString("N"));
 try
 {
+    // 隐私检查使用独立目录，所有地址均为合成数据。
+    string checkHome = Store.Root;
+    Store.Root = Path.Combine(checkHome, "privacy");
+    try
+    {
+        string secret = "https://calendar.example/private/Token-AbC/中文?Key=XyZ%2B&other=你好#fragment";
+        var privateSettings = new Settings { Sources = new() { new Subscription { Url = secret, Name = "测试", Enabled = false, Color = "#123456", Kind = SubscriptionKind.ChinaHolidays } }, ShowChineseLunar = true };
+        string configPath = Store.PathFor("settings.json");
+        string Snapshot(Settings value) => System.Text.Json.JsonSerializer.Serialize(value, Store.Json);
+        Store.Save(privateSettings);
+        string encryptedJson = File.ReadAllText(configPath);
+        var stored = System.Text.Json.Nodes.JsonNode.Parse(encryptedJson)!;
+        Check(stored["Format"]!.GetValue<int>() == 1 && stored["Sources"]![0]!["Url"] == null && stored["Sources"]![0]!["ProtectedUrl"]!.GetValue<string>().Length > 0, "配置只保存带版本的地址密文");
+        Check(!encryptedJson.Contains("Token-AbC") && !encryptedJson.Contains("calendar.example") && !File.Exists(configPath + ".tmp"), "配置及临时文件不残留明文令牌");
+        Check(Snapshot(Store.Load()) == Snapshot(privateSettings), "DPAPI 完整地址及订阅属性往返");
+        string beforeDraft = Snapshot(privateSettings);
+        Store.Save(privateSettings);
+        Check(Snapshot(privateSettings) == beforeDraft, "随机密文不改变草稿比较");
+        var childInfo = new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
+        if (Path.GetFileNameWithoutExtension(Environment.ProcessPath!).Equals("dotnet", StringComparison.OrdinalIgnoreCase)) childInfo.ArgumentList.Add(System.Reflection.Assembly.GetExecutingAssembly().Location);
+        childInfo.ArgumentList.Add("--check-encrypted-settings"); childInfo.Environment["WINCALENDAR_CHECK_ROOT"] = Store.Root;
+        using (var restarted = System.Diagnostics.Process.Start(childInfo)!)
+        {
+            Check(restarted.WaitForExit(15000) && restarted.ExitCode == 0 && restarted.StandardOutput.ReadToEnd().Trim() == Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(secret))), "独立进程重启恢复加密地址");
+        }
+        string oldJson = System.Text.Json.JsonSerializer.Serialize(new { Sources = new[] { new { privateSettings.Sources[0].Id, Url = secret, Name = "旧配置", Enabled = false, Color = "#123456", Kind = 1 } }, ShowChineseLunar = true });
+        Store.Write(configPath, oldJson);
+        var migrated = Store.Load();
+        Check(migrated.Sources[0].Url == secret && migrated.Sources[0].Id == privateSettings.Sources[0].Id && !migrated.Sources[0].Enabled && migrated.ShowChineseLunar && !File.ReadAllText(configPath).Contains("Token-AbC"), "旧配置自动迁移且保留属性");
+        Store.Write(configPath, oldJson);
+        using (var lockedConfig = new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            Reject(() => Store.Load(), "迁移写入失败拒绝覆盖");
+        Check(File.ReadAllText(configPath) == oldJson && !File.Exists(configPath + ".tmp"), "迁移失败保留原配置并清除临时文件");
+        Store.Load();
+        var originalEncrypted = File.ReadAllText(configPath);
+        int encryptions = 0;
+        var pair = new Settings { Sources = new() { new Subscription { Url = secret }, new Subscription { Url = "https://calendar.example/other" } } };
+        Reject(() => Store.Save(pair, address => { if (++encryptions == 2) throw new System.Security.Cryptography.CryptographicException(); return "test"; }), "部分地址加密失败不写入");
+        Check(File.ReadAllText(configPath) == originalEncrypted && !File.Exists(configPath + ".tmp"), "加密失败保留完整原文件");
+        Store.Save(pair);
+        var healthyPair = File.ReadAllText(configPath);
+        foreach (var badCipher in new[] { "not-base64!", Convert.ToBase64String(new byte[32]) })
+        {
+            var broken = System.Text.Json.Nodes.JsonNode.Parse(healthyPair)!;
+            broken["Sources"]![0]!["ProtectedUrl"] = badCipher;
+            Store.Write(configPath, broken.ToJsonString());
+            var loaded = Store.Load();
+            Check(loaded.Sources[0].UrlUnreadable && loaded.Sources[0].Url == "" && loaded.Sources[0].ProtectedUrl == badCipher && loaded.Sources[1].Url == pair.Sources[1].Url, "单条密文错误不影响其他订阅");
+            var copy = System.Text.Json.JsonSerializer.Deserialize<Settings>(Snapshot(loaded), Store.Json)!;
+            copy.ShowChineseLunar = true; Store.Save(copy);
+            Check(Store.Load().Sources[0].ProtectedUrl == badCipher && loaded.ShowChineseLunar == false, "保存及取消草稿保留失败密文");
+            string cacheText = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:private-cache\r\nDTSTART;VALUE=DATE:20260908\r\nDTEND;VALUE=DATE:20260909\r\nSUMMARY:Cached\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+            Store.Write(Store.PathFor(copy.Sources[0].Id + ".ics"), cacheText);
+            copy.Sources[1].Enabled = false;
+            var cache = new Subscriptions(copy);
+            cache.Refresh(new DateTime(2026, 9, 1), new DateTime(2026, 10, 1), true).GetAwaiter().GetResult();
+            Check(cache.Events.Count == 1 && !copy.Sources[0].Failed && copy.Sources[0].UrlUnreadable && Store.Load().Sources[0].ProtectedUrl == badCipher, "解密失败跳过网络并保留缓存和密文");
+        }
+        Store.Write(configPath, "{\"Format\":99,\"Sources\":[]}");
+        string future = File.ReadAllText(configPath);
+        Reject(() => Store.Load(), "拒绝加载未知配置格式");
+        Reject(() => Store.Save(privateSettings), "拒绝覆盖未知配置格式");
+        Check(File.ReadAllText(configPath) == future, "未知格式原文件保留");
+        Console.WriteLine("SKIP 跨 Windows 用户解密：当前未创建隔离用户，待实机验收");
+    }
+    finally { Store.Root = checkHome; }
+
     // 连接替身只接收已校验的 IP，不建立真实网络连接。
     System.Net.IPAddress IP(string value) => System.Net.IPAddress.Parse(value);
     foreach (var address in new[] { "0.0.0.0", "10.1.2.3", "100.64.0.1", "127.0.0.1", "169.254.169.254", "172.16.0.1", "192.168.1.1", "198.18.0.1", "192.0.2.1", "224.0.0.1", "255.255.255.255", "::1", "::", "fe80::1", "fc00::1", "ff02::1", "::ffff:127.0.0.1", "64:ff9b::7f00:1", "2002:7f00:1::1", "2001:db8::1", "3fff::1" })
@@ -358,6 +432,7 @@ try
     File.WriteAllText(Store.PathFor("settings.json"), "broken");
     Reject(() => Store.Load(), "配置损坏不覆盖");
     Check(File.ReadAllText(Store.PathFor("settings.json")) == "broken", "保留损坏配置供恢复");
+    File.Delete(Store.PathFor("settings.json")); // 后续持久化检查重新创建有效配置。
 
     string Wrap(string events) => "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//WinCalendar Checks//EN\r\n" + events.Replace("\n", "\r\n") + "\r\nEND:VCALENDAR\r\n";
     string allDay = Wrap("BEGIN:VEVENT\nUID:all\nDTSTART;VALUE=DATE:20260907\nDTEND;VALUE=DATE:20260909\nSUMMARY:原文 title\nEND:VEVENT");
