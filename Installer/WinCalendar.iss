@@ -97,11 +97,23 @@ var
 
 #include "UninstallData.iss"
 
-// 为主题复选框预留内部空间，避免高 DPI 下图标向左扩展时被裁切。
+#include "CheckListLayout.iss"
+#ifdef LayoutChecks
+#include "CheckListLayoutChecks.iss"
+#endif
+
 procedure InitializeWizard();
 begin
-  WizardForm.TasksList.MinItemHeight := ScaleY(24);
-  WizardForm.TasksList.Offset := ScaleX(12);
+  ApplyCheckListLayout(WizardForm);
+#ifdef LayoutChecks
+  RunLayoutChecks();
+#endif
+end;
+
+// 页面切换时重新扫描，覆盖之后动态创建的页面；绝对最小值不会累积偏移。
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  ApplyCheckListLayout(WizardForm);
 end;
 
 function InitializeUninstall(): Boolean;
