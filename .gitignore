@@ -4,3 +4,4 @@ Checks/bin/
 Checks/obj/
 publish/
 *.user
+.idea/
