@@ -1,5 +1,7 @@
 # WinCalendar
 
+[简体中文](README.md) | [English](README.en.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md)
+
 点击 Windows 右下角时间，查看日历、假日和日程。
 
 **[下载最新版](https://github.com/houjie1212/WinCalendar/releases/latest)** · [反馈问题](https://github.com/houjie1212/WinCalendar/issues)
